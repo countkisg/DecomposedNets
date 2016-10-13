@@ -87,3 +87,12 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# add by author
+logs/
+ckt/
+celeba/
+img_align_celeba/
+mnist/
+
+
