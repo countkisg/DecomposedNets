@@ -70,8 +70,8 @@ if __name__ == "__main__":
         save_path='CelebA_2016_10_10_14_25_29_5000.ckpt'
     )
 
-    #algo.train()
-    algo.classify(test_images=None)
+    algo.train()
+    #algo.classify(test_images=None)
     #test_set = dataset.test.images[0:9984]
     #test_set_labels = dataset.test.labels[0:9984]
     #
