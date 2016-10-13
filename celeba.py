@@ -67,7 +67,7 @@ if __name__ == "__main__":
         generator_learning_rate=1e-3,
         discriminator_learning_rate=2e-4,
         reload=False,
-        save_path='CelebA_2016_10_10_14_25_29_5000.ckpt'
+        save_path='Celeba.ckpt'
     )
 
     algo.train()
