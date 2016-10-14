@@ -67,11 +67,11 @@ if __name__ == "__main__":
         generator_learning_rate=1e-3,
         discriminator_learning_rate=2e-4,
         reload=False,
-        save_path='Celeba_small_size_10_13.ckpt'
+        save_path='Celeba_cont_code_small_size.ckpt'
     )
 
-    algo.train()
-    #algo.classify(test_images=None)
+    #algo.train()
+    algo.classify(test_images=None)
     #test_set = dataset.test.images[0:9984]
     #test_set_labels = dataset.test.labels[0:9984]
     #
