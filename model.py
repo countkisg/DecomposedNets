@@ -225,11 +225,11 @@ class InfoGAN(object):
                 h3 = lrelu(self.ge_face_bn2(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/2.)),
                                     int(ceil(self.image_shape[1]/2.)), 32], k_h=4, k_w=4,
                                     name='ge_face_deconv2')))
-                h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
-                                                      int(ceil(self.image_shape[1] / 2.)), 16], k_h=4, k_w=4,
-                                    name='ge_face_deconv2')))
-                x_dist_flat = deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
-                                    name='ge_face_deconv3')
+                h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/2.)),
+                                                      int(ceil(self.image_shape[1]/2.)), 16], k_h=4, k_w=4,
+                                    name='ge_face_deconv3')))
+                x_dist_flat = self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
+                                    name='ge_face_deconv4'))
                 x_dist_info = self.output_dist.activate_dist(x_dist_flat)
                 return self.output_dist.sample(x_dist_info), x_dist_info
         else:
