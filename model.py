@@ -209,21 +209,21 @@ class InfoGAN(object):
         elif self.network_type == 'celeba':
             with tf.variable_scope('g_net', reuse=reuse):
                 noise_code = tf.reshape(z_var, [self.batch_size, self.latent_dist.dim])
-                h0 = lrelu(linear(noise_code, int(ceil(self.image_shape[0]/16.)) * int(ceil(self.image_shape[1]/16.)) * 256,
+                h0 = lrelu(linear(noise_code, int(ceil(self.image_shape[0]/32.)) * int(ceil(self.image_shape[1]/32.)) * 256,
                                 name='ge_face_linear0'))
                 h1 = lrelu(self.ge_face_bn0(deconv2d(tf.reshape(h0, shape=[self.batch_size,
-                                                                           int(ceil(self.image_shape[0] / 16.)),
-                                                                           int(ceil(self.image_shape[1] / 16.)),
+                                                                           int(ceil(self.image_shape[0] / 32.)),
+                                                                           int(ceil(self.image_shape[1] / 32.)),
                                                                            256]),
                                                      output_shape=[self.batch_size,
-                                                     int(ceil(self.image_shape[0]/8.)),
-                                                     int(ceil(self.image_shape[1]/8.)), 128], k_h=4, k_w=4,
+                                                     int(ceil(self.image_shape[0]/16.)),
+                                                     int(ceil(self.image_shape[1]/16.)), 128], k_h=4, k_w=4,
                                                      name='ge_face_deconv0')))
-                h2 = lrelu(self.ge_face_bn1(deconv2d(h1, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/4.)),
-                                    int(ceil(self.image_shape[1]/4.)), 64], k_h=4, k_w=4,
+                h2 = lrelu(self.ge_face_bn1(deconv2d(h1, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/8.)),
+                                    int(ceil(self.image_shape[1]/8.)), 64], k_h=4, k_w=4,
                                     name='ge_face_deconv1')))
-                h3 = lrelu(self.ge_face_bn2(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/2.)),
-                                    int(ceil(self.image_shape[1]/2.)), 32], k_h=4, k_w=4,
+                h3 = lrelu(self.ge_face_bn2(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/4.)),
+                                    int(ceil(self.image_shape[1]/4.)), 32], k_h=4, k_w=4,
                                     name='ge_face_deconv2')))
                 h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/2.)),
                                                       int(ceil(self.image_shape[1]/2.)), 16], k_h=4, k_w=4,
