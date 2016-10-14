@@ -33,16 +33,16 @@ if __name__ == "__main__":
 
     latent_spec = [
         (Uniform(128), False),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
+        (Uniform(1, fix_std=True), True),
     ]
 
     model = InfoGAN(
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         generator_learning_rate=1e-3,
         discriminator_learning_rate=2e-4,
         reload=False,
-        save_path='Celeba.ckpt'
+        save_path='Celeba_small_size_10_13.ckpt'
     )
 
     algo.train()
