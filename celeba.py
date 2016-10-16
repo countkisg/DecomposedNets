@@ -33,16 +33,14 @@ if __name__ == "__main__":
 
     latent_spec = [
         (Uniform(128), False),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
-        (Uniform(1, fix_std=True), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+
     ]
 
     model = InfoGAN(
@@ -64,8 +62,8 @@ if __name__ == "__main__":
         updates_per_epoch=updates_per_epoch,
         snapshot_interval=-1,
         info_reg_coeff=1.0,
-        generator_learning_rate=4e-4,
-        discriminator_learning_rate=8e-4,
+        generator_learning_rate=3e-4,
+        discriminator_learning_rate=6e-4,
         reload=False,
         save_path='Celeba_tune_lrate.ckpt'
     )
