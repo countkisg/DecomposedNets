@@ -64,10 +64,10 @@ if __name__ == "__main__":
         updates_per_epoch=updates_per_epoch,
         snapshot_interval=-1,
         info_reg_coeff=1.0,
-        generator_learning_rate=2e-4,
-        discriminator_learning_rate=4e-4,
+        generator_learning_rate=4e-4,
+        discriminator_learning_rate=8e-4,
         reload=False,
-        save_path='Celeba_cont_code_small_size.ckpt'
+        save_path='Celeba_tune_lrate.ckpt'
     )
 
     algo.train()

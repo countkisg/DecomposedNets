@@ -150,8 +150,8 @@ class BigDataset(Dataset):
 
 class CelebA(object):
     def __init__(self):
-        self.image_dim = 112*88*3
-        self.image_shape = [112, 88, 3]
+        self.image_dim = 218*178*3
+        self.image_shape = [218, 178, 3]
 
         self._data_directory = 'img_align_celeba/'
         self._onlyfiles = [self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))]
