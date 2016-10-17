@@ -146,10 +146,13 @@ class InfoGANTrainer(object):
 
             generator_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
             self.generator_trainer = generator_optimizer.minimize(generator_loss, var_list=g_vars)
-            trans_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
+            #trans_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
             #self.trans_trainer = trans_optimizer.minimize(trans_loss, var_list=thetas)
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
+
+            self.d_loss = discriminator_loss
+            self.g_loss = generator_loss
 
     def visualize_all_factors(self):
         with tf.Session():
@@ -267,6 +270,11 @@ class InfoGANTrainer(object):
 
                     all_log_vals.append(log_vals)
                     counter += 1
+
+                    g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
+                    print g_loss, d_loss
+                    if g_loss > d_loss * 2:
+                        sess.run(self.generator_trainer, feed_dict)
 
                     if counter % self.snapshot_interval == 0:
                         snapshot_name = "%s_%s" % (self.exp_name, str(counter))

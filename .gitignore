@@ -94,5 +94,9 @@ ckt/
 celeba/
 img_align_celeba/
 mnist/
+Celeba*
+mnist*
+100000.jpg
+cat.jpg
 
 
