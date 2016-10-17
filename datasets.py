@@ -113,7 +113,7 @@ class BigDataset(Dataset):
 
     def __normalize(self, arr):
         if arr.max() > 1.0:
-            arr /= 255.0
+            arr = arr/128.0 - 1.
         return arr
     def __read_images(self, start, end, batch_size):
         result = np.zeros(shape=[batch_size]+list(self._image_shape))

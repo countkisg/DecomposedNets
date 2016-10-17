@@ -146,9 +146,10 @@ class InfoGAN(object):
                 h0 = lrelu(conv2d(img, output_dim=64, k_w=4, k_h=4, name='d_face_conv0'))
                 h1 = lrelu(self.d_face_bn0(conv2d(h0, output_dim=128, k_w=4, k_h=4, name='d_face_conv1')))
                 h2 = lrelu(self.d_face_bn1(conv2d(h1, output_dim=256, k_w=4, k_h=4, name='d_face_conv2')))
-                h3 = tf.reshape(h2, [self.batch_size, -1])
-                discriminator_template = linear(h3, 1, name='d_face_real_prob')
-                encoder_template = linear(lrelu(linear(h3, 126, name='d_face_linear0')), self.reg_latent_dist.dist_flat_dim,
+                h3 = lrelu(self.d_face_bn2(conv2d(h2, output_dim=512, k_h=4, k_w=4, name='d_face_conv3')))
+                h4 = tf.reshape(h3, [self.batch_size, -1])
+                discriminator_template = linear(h4, 1, name='d_face_real_prob')
+                encoder_template = linear(lrelu(linear(h4, 126, name='d_face_linear0')), self.reg_latent_dist.dist_flat_dim,
                                           name='d_face_noise_code')
 
                 d_out = tf.identity(discriminator_template, name='d_out')
@@ -228,10 +229,10 @@ class InfoGAN(object):
                 h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0]/2.)),
                                                       int(ceil(self.image_shape[1]/2.)), 16], k_h=4, k_w=4,
                                     name='ge_face_deconv3')))
-                x_dist_flat = self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
-                                    name='ge_face_deconv4'))
+                x_dist_flat = tf.nn.tanh(self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
+                                    name='ge_face_deconv4')))
                 x_dist_info = self.output_dist.activate_dist(x_dist_flat)
-                return self.output_dist.sample(x_dist_info), x_dist_info
+                return x_dist_flat, x_dist_info
         else:
             raise NotImplementedError
 
