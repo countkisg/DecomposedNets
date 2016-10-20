@@ -33,16 +33,11 @@ if __name__ == "__main__":
 
     latent_spec = [
         (Uniform(128), False),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
-        (Uniform(1), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Categorical(10), True),
+        (Uniform(20), False),
 
     ]
 
@@ -66,9 +61,9 @@ if __name__ == "__main__":
         snapshot_interval=-1,
         info_reg_coeff=1.0,
         generator_learning_rate=8e-3,
-        discriminator_learning_rate=4e-4,
+        discriminator_learning_rate=9e-4,
         reload=False,
-        save_path='Celeba_half_cate_8e-3_6e-4.ckpt'
+        save_path='Celeba_half_unif_8e-3_4e-4_crop.ckpt'
     )
 
     algo.train()

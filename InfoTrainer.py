@@ -273,7 +273,7 @@ class InfoGANTrainer(object):
 
                     g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
                     #print g_loss, d_loss
-                    if g_loss > d_loss :
+                    if g_loss > d_loss / 2:
                         sess.run(self.generator_trainer, feed_dict)
 
                     if counter % self.snapshot_interval == 0:

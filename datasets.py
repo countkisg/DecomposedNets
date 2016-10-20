@@ -155,7 +155,7 @@ class CelebA(object):
         self.image_dim = 88*64*3
         self.image_shape = [88, 64, 3]
 
-        self._data_directory = '__img_align_celeba/'
+        self._data_directory = 'img_align_celeba/'
         self._onlyfiles = [self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))]
         self.train = BigDataset(filespath=self._onlyfiles, image_shape=self.image_shape, image_dim=self.image_dim)
 
