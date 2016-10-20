@@ -1,7 +1,23 @@
 from datasets import CelebA, BigDataset
 import matplotlib.pyplot as plt
 import numpy as np
-data = CelebA()
-x, _ = data.train.next_batch(100)
-plt.imshow(np.reshape(x[0], newshape=data.image_shape))
-tmp =1
+import tensorflow as tf
+import scipy.misc
+from vgg import vgg_net
+
+# path = '../imagenet-vgg-verydeep-19.mat'
+# im = scipy.misc.imread('110000.jpg').astype(np.float32)
+# im = np.reshape(im, newshape=(-1,) + im.shape)
+# net, _ = vgg_net(path, im)
+#
+# with tf.Session() as sess:
+#     fea = sess.run(net)
+#     plt.imshow(fea['relu2_1'])
+#     plt.imshow(fea['relu2_1'])
+#     plt.imshow(fea['relu2_1'])
+
+data = CelebA().train
+ims = data.next_batch(1)
+plt.imshow(np.reshape(ims, newshape=[128,128,3]))
+
+plt.imshow(np.reshape(ims, newshape=[128,128,3]))

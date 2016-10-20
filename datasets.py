@@ -120,7 +120,9 @@ class BigDataset(Dataset):
         for i in range(batch_size):
             path = self._filespath[start+i]
             im = scipy.misc.imread(path)
-            result[i] = self.__normalize(scipy.misc.imresize(im, size=self._image_shape).astype(np.float32))
+            croped_im = scipy.misc.imresize(im[28:-20, 28:-30,:], size=self._image_shape ,interp='bicubic').astype(np.float32)
+            #croped = im.astype(np.float32)[28:-20, 28:-30,:]
+            result[i] = self.__normalize(croped_im)
             #result[i] = self.__normalize(scipy.misc.imresize(im, size=(48,56,3)).astype(np.float32))
         return np.reshape(result, newshape=[batch_size, -1])
 
@@ -150,10 +152,10 @@ class BigDataset(Dataset):
 
 class CelebA(object):
     def __init__(self):
-        self.image_dim = 112*88*3
-        self.image_shape = [112, 88, 3]
+        self.image_dim = 88*64*3
+        self.image_shape = [88, 64, 3]
 
-        self._data_directory = 'img_align_celeba/'
+        self._data_directory = '__img_align_celeba/'
         self._onlyfiles = [self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))]
         self.train = BigDataset(filespath=self._onlyfiles, image_shape=self.image_shape, image_dim=self.image_dim)
 
