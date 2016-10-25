@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io
 
 
-def vgg_net(data_path, input_image):
+def vgg_net(data, input_image):
     layers = (
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
 
@@ -19,7 +19,7 @@ def vgg_net(data_path, input_image):
         'relu5_3', 'conv5_4', 'relu5_4'
     )
 
-    data = scipy.io.loadmat(data_path)
+    #data = scipy.io.loadmat(data_path)
     mean = data['normalization'][0][0][0]
     mean_pixel = np.mean(mean, axis=(0, 1))
     weights = data['layers'][0]

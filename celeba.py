@@ -63,7 +63,7 @@ if __name__ == "__main__":
         generator_learning_rate=8e-3,
         discriminator_learning_rate=9e-4,
         reload=False,
-        save_path='Celeba_half_unif_8e-3_4e-4_crop.ckpt'
+        save_path='Celeba_crop_unif_cate_8e-3_1e-5.ckpt'
     )
 
     algo.train()
