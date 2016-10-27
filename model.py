@@ -5,8 +5,10 @@ import numpy as np
 from inverse_transformer import inverse_theta, inverse_transformer
 from transformer import  transformer
 from math import ceil
+import scipy.io
+from vgg import vgg_net
 class InfoGAN(object):
-    def __init__(self, output_dist, latent_spec, batch_size, image_shape, network_type):
+    def __init__(self, output_dist, latent_spec, batch_size, image_shape, network_type, vgg_path):
         """
         :type output_dist: Distribution
         :type latent_spec: list[(Distribution, bool)]
@@ -95,6 +97,9 @@ class InfoGAN(object):
         self.ge_face_bn3 = BatchNorm(self.batch_size, name='ge_face_bn3')
         self.ge_face_bn4 = BatchNorm(self.batch_size, name='ge_face_bn4')
 
+        # load pre-trained vgg-19 model
+        self.vgg_model = scipy.io.loadmat(vgg_path)
+
     def discriminate(self, x_var, reuse=None):
         if self.network_type == "mnist":
             with tf.variable_scope("d_net", reuse=reuse):
@@ -159,6 +164,18 @@ class InfoGAN(object):
                 reg_dist_flat = tf.identity(encoder_template, name='reg_dist_flat')
                 reg_dist_info = self.reg_latent_dist.activate_dist(reg_dist_flat)
                 return d, self.reg_latent_dist.sample(reg_dist_info), reg_dist_info, reg_dist_flat
+        elif self.network_type == 'celeba_vgg':
+            with tf.variable_scope('d_net', reuse=reuse):
+                img = tf.reshape(x_var, shape=[-1]+list(self.image_shape))
+                vgg_fea, _ = vgg_net(self.vgg_model, img)
+                h0 = lrelu(conv2d(vgg_fea['relu2_1'], output_dim=16, k_w=3, k_h=3, name='d_face_conv0'))
+                h1 = lrelu(linear(tf.reshape(h0, [self.batch_size, -1]), output_size=256, name='d_face_linear0'))
+                content_discriminator = tf.nn.sigmoid(linear(h1, 1, name='d_face_content_linear0'))
+                h2 = lrelu(conv2d(vgg_fea['relu5_1'], output_dim=16, k_h=3, k_w=3, name='d_face_conv1'))
+                h3 = lrelu(linear(tf.reshape(h2, [self.batch_size, -1]), output_size=256, name='d_face_linear1'))
+                style_discriminatror = tf.nn.sigmoid(linear(h3, 1, name='d_face_style_linear1'))
+                return content_discriminator, style_discriminatror
+
         else:
             raise NotImplementedError
 
@@ -235,6 +252,37 @@ class InfoGAN(object):
                                     name='ge_face_deconv3')))
                 x_dist_flat = tf.nn.tanh(self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
                                     name='ge_face_deconv4')))
+                x_dist_info = self.output_dist.activate_dist(x_dist_flat)
+                return x_dist_flat, x_dist_info
+        elif self.network_type == 'celeba_vgg':
+            with tf.variable_scope('g_net', reuse=reuse):
+                noise_code = tf.reshape(z_var, [self.batch_size, self.latent_dist.dim])
+                h0 = lrelu(
+                    linear(noise_code, int(ceil(self.image_shape[0] / 32.)) * int(ceil(self.image_shape[1] / 32.)) * 256,
+                           name='ge_face_linear0'))
+                h1 = lrelu(self.ge_face_bn0(deconv2d(tf.reshape(h0, shape=[self.batch_size,
+                                                                           int(ceil(self.image_shape[0] / 32.)),
+                                                                           int(ceil(self.image_shape[1] / 32.)),
+                                                                           256]),
+                                                     output_shape=[self.batch_size,
+                                                                   int(ceil(self.image_shape[0] / 16.)),
+                                                                   int(ceil(self.image_shape[1] / 16.)), 128], k_h=4, k_w=4,
+                                                     name='ge_face_deconv0')))
+                h2 = lrelu(self.ge_face_bn1(deconv2d(h1, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 8.)),
+                                                                       int(ceil(self.image_shape[1] / 8.)), 64], k_h=4,
+                                                     k_w=4,
+                                                     name='ge_face_deconv1')))
+                h3 = lrelu(self.ge_face_bn2(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 4.)),
+                                                                       int(ceil(self.image_shape[1] / 4.)), 32], k_h=4,
+                                                     k_w=4,
+                                                     name='ge_face_deconv2')))
+                h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
+                                                                       int(ceil(self.image_shape[1] / 2.)), 16], k_h=4,
+                                                     k_w=4,
+                                                     name='ge_face_deconv3')))
+                x_dist_flat = tf.nn.tanh(
+                    self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
+                                              name='ge_face_deconv4')))
                 x_dist_info = self.output_dist.activate_dist(x_dist_flat)
                 return x_dist_flat, x_dist_info
         else:

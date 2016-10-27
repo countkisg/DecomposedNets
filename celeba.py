@@ -18,7 +18,7 @@ if __name__ == "__main__":
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
     batch_size = 128
-    updates_per_epoch = 100
+    updates_per_epoch = 500
     max_epoch = 50
 
     exp_name = "CelebA_%s" % timestamp
@@ -46,7 +46,8 @@ if __name__ == "__main__":
         latent_spec=latent_spec,
         batch_size=batch_size,
         image_shape=dataset.image_shape,
-        network_type="celeba",
+        network_type="celeba_vgg",
+        vgg_path='../imagenet-vgg-verydeep-19.mat'
     )
 
     algo = InfoGANTrainer(
@@ -62,11 +63,13 @@ if __name__ == "__main__":
         info_reg_coeff=1.0,
         generator_learning_rate=8e-3,
         discriminator_learning_rate=9e-4,
+        style_loss_coeff=1,
         reload=False,
         save_path='Celeba_crop_unif_cate_8e-3_1e-5.ckpt'
     )
 
     algo.train()
+
     #algo.classify(test_images=None)
     #test_set = dataset.test.images[0:9984]
     #test_set_labels = dataset.test.labels[0:9984]

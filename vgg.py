@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import scipy.io
 
-
 def vgg_net(data, input_image):
     layers = (
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',

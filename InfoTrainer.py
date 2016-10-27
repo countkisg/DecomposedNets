@@ -4,7 +4,9 @@ import numpy as np
 from progressbar import ETA, Bar, Percentage, ProgressBar
 from distribution import Bernoulli, Gaussian, Categorical
 from ops import binary_crossentropy
+import scipy.io
 import sys
+import math
 TINY = 1e-8
 class InfoGANTrainer(object):
     def __init__(self,
@@ -22,7 +24,8 @@ class InfoGANTrainer(object):
                  generator_learning_rate=2e-4,
                  reload=False,
                  save_path=None,
-                 trans_loss_coeff=0.2
+                 trans_loss_coeff=0.2,
+                 style_loss_coeff=1
                  ):
         """
         :type model: RegularizedGAN
@@ -48,6 +51,7 @@ class InfoGANTrainer(object):
         self.reload = reload
         self.save_path = save_path
         self.trans_loss_coeff = trans_loss_coeff
+        self.style_loss_coeff = style_loss_coeff
         ################
         self.subnets = 3 # At least larger than 1
 
@@ -58,13 +62,17 @@ class InfoGANTrainer(object):
         with tf.Session() as sess:
             z_var = self.model.latent_dist.sample_prior(self.batch_size)
             fake_x, _ = self.model.generate(z_var, reuse=False)
-            real_d, _, _, region_feature = self.model.discriminate(input_tensor, reuse=False)
-            fake_d, _, fake_reg_z_dist_info, _ = self.model.discriminate(fake_x, reuse=True)
+            real_content_d, real_style_d = self.model.discriminate(input_tensor, reuse=False)
+            fake_content_d, fake_style_d = self.model.discriminate(fake_x, reuse=True)
 
             reg_z = self.model.reg_z(z_var)
 
-            discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) + tf.log(1. - fake_d + TINY))
-            generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY))
+            discriminator_loss = - tf.reduce_mean(tf.log(real_content_d + TINY) +
+                                                  self.style_loss_coeff * tf.log(real_style_d + TINY) +
+                                                  tf.log(1. - fake_content_d + TINY) +
+                                                  self.style_loss_coeff * tf.log(1. - fake_style_d + TINY))
+            generator_loss = - tf.reduce_mean(tf.log(fake_content_d + TINY) +
+                                              self.style_loss_coeff * tf.log(fake_style_d) + TINY)
 
             self.log_vars.append(("discriminator_loss", discriminator_loss))
             self.log_vars.append(("generator_loss", generator_loss))
@@ -90,62 +98,62 @@ class InfoGANTrainer(object):
             cross_ent = tf.constant(0.)
             test_only_entropy = tf.constant(0.)
             # discrete:
-            if len(self.model.reg_disc_latent_dist.dists) > 0:
-                disc_reg_z = self.model.disc_reg_z(reg_z)
-                disc_reg_dist_info = self.model.disc_reg_dist_info(fake_reg_z_dist_info)
-                disc_log_q_c_given_x = self.model.reg_disc_latent_dist.logli(disc_reg_z, disc_reg_dist_info)
-                disc_log_q_c = self.model.reg_disc_latent_dist.logli_prior(disc_reg_z)
-                disc_cross_ent = tf.reduce_mean(-disc_log_q_c_given_x)
-                disc_ent = tf.reduce_mean(-disc_log_q_c)
-                disc_mi_est = disc_ent - disc_cross_ent
-                mi_est += disc_mi_est
-                cross_ent += disc_cross_ent
-                self.log_vars.append(("MI_disc", disc_mi_est))
-                self.log_vars.append(("CrossEnt_disc", disc_cross_ent))
-                discriminator_loss -= self.info_reg_coeff * disc_mi_est
-                generator_loss -= self.info_reg_coeff * disc_mi_est
-                test_only_entropy -= self.info_reg_coeff * disc_mi_est
+            # if len(self.model.reg_disc_latent_dist.dists) > 0:
+            #     disc_reg_z = self.model.disc_reg_z(reg_z)
+            #     disc_reg_dist_info = self.model.disc_reg_dist_info(fake_reg_z_dist_info)
+            #     disc_log_q_c_given_x = self.model.reg_disc_latent_dist.logli(disc_reg_z, disc_reg_dist_info)
+            #     disc_log_q_c = self.model.reg_disc_latent_dist.logli_prior(disc_reg_z)
+            #     disc_cross_ent = tf.reduce_mean(-disc_log_q_c_given_x)
+            #     disc_ent = tf.reduce_mean(-disc_log_q_c)
+            #     disc_mi_est = disc_ent - disc_cross_ent
+            #     mi_est += disc_mi_est
+            #     cross_ent += disc_cross_ent
+            #     self.log_vars.append(("MI_disc", disc_mi_est))
+            #     self.log_vars.append(("CrossEnt_disc", disc_cross_ent))
+            #     discriminator_loss -= self.info_reg_coeff * disc_mi_est
+            #     generator_loss -= self.info_reg_coeff * disc_mi_est
+            #     test_only_entropy -= self.info_reg_coeff * disc_mi_est
+            #
+            # if len(self.model.reg_cont_latent_dist.dists) > 0:
+            #     cont_reg_z = self.model.cont_reg_z(reg_z)
+            #     cont_reg_dist_info = self.model.cont_reg_dist_info(fake_reg_z_dist_info)
+            #     cont_log_q_c_given_x = self.model.reg_cont_latent_dist.logli(cont_reg_z, cont_reg_dist_info)
+            #     cont_log_q_c = self.model.reg_cont_latent_dist.logli_prior(cont_reg_z)
+            #     cont_cross_ent = tf.reduce_mean(-cont_log_q_c_given_x)
+            #     cont_ent = tf.reduce_mean(-cont_log_q_c)
+            #     cont_mi_est = cont_ent - cont_cross_ent
+            #     mi_est += cont_mi_est
+            #     cross_ent += cont_cross_ent
+            #     self.log_vars.append(("MI_cont", cont_mi_est))
+            #     self.log_vars.append(("CrossEnt_cont", cont_cross_ent))
+            #     discriminator_loss -= self.info_reg_coeff * cont_mi_est
+            #     generator_loss -= self.info_reg_coeff * cont_mi_est
+            #     test_only_entropy -= self.info_reg_coeff * cont_mi_est
 
-            if len(self.model.reg_cont_latent_dist.dists) > 0:
-                cont_reg_z = self.model.cont_reg_z(reg_z)
-                cont_reg_dist_info = self.model.cont_reg_dist_info(fake_reg_z_dist_info)
-                cont_log_q_c_given_x = self.model.reg_cont_latent_dist.logli(cont_reg_z, cont_reg_dist_info)
-                cont_log_q_c = self.model.reg_cont_latent_dist.logli_prior(cont_reg_z)
-                cont_cross_ent = tf.reduce_mean(-cont_log_q_c_given_x)
-                cont_ent = tf.reduce_mean(-cont_log_q_c)
-                cont_mi_est = cont_ent - cont_cross_ent
-                mi_est += cont_mi_est
-                cross_ent += cont_cross_ent
-                self.log_vars.append(("MI_cont", cont_mi_est))
-                self.log_vars.append(("CrossEnt_cont", cont_cross_ent))
-                discriminator_loss -= self.info_reg_coeff * cont_mi_est
-                generator_loss -= self.info_reg_coeff * cont_mi_est
-                test_only_entropy -= self.info_reg_coeff * cont_mi_est
-
-            for idx, dist_info in enumerate(self.model.reg_latent_dist.split_dist_info(fake_reg_z_dist_info)):
-                if "stddev" in dist_info:
-                    self.log_vars.append(("max_std_%d" % idx, tf.reduce_max(dist_info["stddev"])))
-                    self.log_vars.append(("min_std_%d" % idx, tf.reduce_min(dist_info["stddev"])))
+            # for idx, dist_info in enumerate(self.model.reg_latent_dist.split_dist_info(fake_reg_z_dist_info)):
+            #     if "stddev" in dist_info:
+            #         self.log_vars.append(("max_std_%d" % idx, tf.reduce_max(dist_info["stddev"])))
+            #         self.log_vars.append(("min_std_%d" % idx, tf.reduce_min(dist_info["stddev"])))
 
             self.log_vars.append(("MI", mi_est))
             self.log_vars.append(("CrossEnt", cross_ent))
 
             all_vars = tf.trainable_variables()
-            d_vars = [var for var in all_vars if var.name.startswith('d_')]
-            g_vars = [var for var in all_vars if var.name.startswith('g_')]
+            self.d_vars = [var for var in all_vars if var.name.startswith('d_')]
+            self.g_vars = [var for var in all_vars if var.name.startswith('g_')]
 
             thetas = [var for var in all_vars if var.name.startswith('theta')]
 
-            self.log_vars.append(("max_real_d", tf.reduce_max(real_d)))
-            self.log_vars.append(("min_real_d", tf.reduce_min(real_d)))
-            self.log_vars.append(("max_fake_d", tf.reduce_max(fake_d)))
-            self.log_vars.append(("min_fake_d", tf.reduce_min(fake_d)))
+            self.log_vars.append(("max_real_content_d", tf.reduce_max(real_content_d)))
+            self.log_vars.append(("min_real_content_d", tf.reduce_min(real_content_d)))
+            self.log_vars.append(("max_fake_content_d", tf.reduce_max(fake_content_d)))
+            self.log_vars.append(("min_fake_content_d", tf.reduce_min(fake_content_d)))
+            self.log_vars.append(("max_real_style_d", tf.reduce_max(real_style_d)))
+            self.log_vars.append(("min_real_style_d", tf.reduce_min(real_style_d)))
+            self.log_vars.append(("max_fake_style_d", tf.reduce_max(fake_style_d)))
+            self.log_vars.append(("min_fake_style_d", tf.reduce_min(fake_style_d)))
 
-            discriminator_optimizer = tf.train.AdamOptimizer(self.discriminator_learning_rate, beta1=0.5)
-            self.discriminator_trainer = discriminator_optimizer.minimize(discriminator_loss, var_list=d_vars)
 
-            generator_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
-            self.generator_trainer = generator_optimizer.minimize(generator_loss, var_list=g_vars)
             #trans_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
             #self.trans_trainer = trans_optimizer.minimize(trans_loss, var_list=thetas)
             for k, v in self.log_vars:
@@ -250,9 +258,6 @@ class InfoGANTrainer(object):
 
             log_vars = [x for _, x in self.log_vars]
             log_keys = [x for x, _ in self.log_vars]
-            if self.reload:
-                saver.restore(sess, self.save_path)
-                return
 
             for epoch in range(self.max_epoch):
                 widgets = ["epoch #%d|" % epoch, Percentage(), Bar(), ETA()]
@@ -265,6 +270,14 @@ class InfoGANTrainer(object):
                     x, _ = self.dataset.train.next_batch(self.batch_size)
                     feed_dict = {self.input_tensor: x}
                     #log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
+                    d_learning_rate = self.discriminator_learning_rate * pow(0.9,  epoch*i/500.)
+                    discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
+                    self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+
+                    g_learning_rate = self.generator_learning_rate * pow(0.9, epoch*i/1000.)
+                    generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
+                    self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+
                     sess.run(self.generator_trainer, feed_dict)
                     log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
 
