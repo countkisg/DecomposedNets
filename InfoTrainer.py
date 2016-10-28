@@ -62,7 +62,7 @@ class InfoGANTrainer(object):
         self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
 
         with tf.Session() as sess:
-            z_var = self.model.latent_dist.sample_prior(self.batch_size)
+            self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
             fake_x, _ = self.model.generate(z_var, reuse=False)
             real_content_d, real_style_d = self.model.discriminate(input_tensor, reuse=False)
             fake_content_d, fake_style_d = self.model.discriminate(fake_x, reuse=True)
@@ -167,7 +167,7 @@ class InfoGANTrainer(object):
             self.global_step = tf.Variable(0, trainable=False)
             d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
                                                        500, 0.8, staircase=True)
-            discriminator_optimizer = tf.train.AdamOptimizer(self.discriminator_learning_rate, beta1=0.5)
+            discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
             self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
 
             g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
@@ -288,7 +288,7 @@ class InfoGANTrainer(object):
                     sess.run(assign_op)
                     log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
                     sess.run(self.generator_trainer, feed_dict)
-
+                    print sess.run(self.z_var)
                     all_log_vals.append(log_vals)
                     counter += 1
 

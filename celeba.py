@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
-    batch_size = 128
-    updates_per_epoch = 500
+    batch_size = 32
+    updates_per_epoch = 100
     max_epoch = 50
 
     exp_name = "CelebA_%s" % timestamp
@@ -32,13 +32,12 @@ if __name__ == "__main__":
     dataset = CelebA()
 
     latent_spec = [
-        (Uniform(128), False),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Categorical(10), True),
-        (Uniform(20), False),
-
+        #(Uniform(1), False),
+        # (Categorical(10), True),
+        # (Categorical(10), True),
+        # (Categorical(10), True),
+        # (Categorical(10), True),
+        (Uniform(100), True),
     ]
 
     model = InfoGAN(
