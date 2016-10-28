@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
-    batch_size = 32
+    batch_size = 128
     updates_per_epoch = 100
     max_epoch = 50
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         snapshot_interval=-1,
         info_reg_coeff=1.0,
         generator_learning_rate=1e-3,
-        discriminator_learning_rate=1e-3,
+        discriminator_learning_rate=1e-4,
         style_loss_coeff=1,
         reload=False,
         save_path='Celeba_crop_unif_cate_8e-3_1e-5.ckpt'
