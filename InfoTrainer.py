@@ -281,17 +281,17 @@ class InfoGANTrainer(object):
                     x, _ = self.dataset.train.next_batch(self.batch_size)
                     feed_dict = {self.input_tensor: x}
                     #log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
-                    d_learning_rate = self.discriminator_learning_rate * pow(0.9,  epoch*i/500.)
-                    discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-                    discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
-
-                    g_learning_rate = self.generator_learning_rate * pow(0.9, epoch*i/1000.)
-                    generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-                    generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
-
-                    sess.run(tf.initialize_variables(set(tf.all_variables()) - initial_vars))
-                    log_vals = sess.run([discriminator_trainer] + log_vars, feed_dict)[1:]
-                    sess.run(generator_trainer, feed_dict)
+                    # d_learning_rate = self.discriminator_learning_rate * pow(0.9,  epoch*i/500.)
+                    # discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
+                    # discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+                    #
+                    # g_learning_rate = self.generator_learning_rate * pow(0.9, epoch*i/1000.)
+                    # generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
+                    # generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+                    #
+                    # sess.run(tf.initialize_variables(set(tf.all_variables()) - initial_vars))
+                    log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
+                    sess.run(self.generator_trainer, feed_dict)
 
                     all_log_vals.append(log_vals)
                     counter += 1
@@ -299,7 +299,7 @@ class InfoGANTrainer(object):
                     g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
                     #print g_loss, d_loss
                     if g_loss > d_loss / 2:
-                        sess.run(generator_trainer, feed_dict)
+                        sess.run(self.generator_trainer, feed_dict)
 
                     if counter % self.snapshot_interval == 0:
                         snapshot_name = "%s_%s" % (self.exp_name, str(counter))
