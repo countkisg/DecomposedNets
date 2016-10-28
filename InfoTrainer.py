@@ -156,7 +156,6 @@ class InfoGANTrainer(object):
             self.log_vars.append(("max_fake_style_d", tf.reduce_max(fake_style_d)))
             self.log_vars.append(("min_fake_style_d", tf.reduce_min(fake_style_d)))
 
-
             #trans_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
             #self.trans_trainer = trans_optimizer.minimize(trans_loss, var_list=thetas)
             for k, v in self.log_vars:
@@ -165,13 +164,17 @@ class InfoGANTrainer(object):
             self.d_loss = discriminator_loss
             self.g_loss = generator_loss
 
-            # d_learning_rate = self.discriminator_learning_rate * pow(0.9, epoch * i / 500.)
+            self.global_step = tf.Variable(0, trainable=False)
+            d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
+                                                       500, 0.8, staircase=True)
             discriminator_optimizer = tf.train.AdamOptimizer(self.discriminator_learning_rate, beta1=0.5)
             self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
 
-            g_learning_rate = self.generator_learning_rate * pow(0.9, 1 / 1000.)
+            g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
+                                                       500, 0.8, staircase=True)
             generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
             self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+
 
     def visualize_all_factors(self):
         with tf.Session():
@@ -280,16 +283,9 @@ class InfoGANTrainer(object):
                     pbar.update(i)
                     x, _ = self.dataset.train.next_batch(self.batch_size)
                     feed_dict = {self.input_tensor: x}
-                    #log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
-                    # d_learning_rate = self.discriminator_learning_rate * pow(0.9,  epoch*i/500.)
-                    # discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-                    # discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
-                    #
-                    # g_learning_rate = self.generator_learning_rate * pow(0.9, epoch*i/1000.)
-                    # generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-                    # generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
-                    #
-                    # sess.run(tf.initialize_variables(set(tf.all_variables()) - initial_vars))
+
+                    assign_op = self.global_step.assign(epoch*self.updates_per_epoch + i)
+                    sess.run(assign_op)
                     log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
                     sess.run(self.generator_trainer, feed_dict)
 

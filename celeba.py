@@ -61,8 +61,8 @@ if __name__ == "__main__":
         updates_per_epoch=updates_per_epoch,
         snapshot_interval=-1,
         info_reg_coeff=1.0,
-        generator_learning_rate=8e-3,
-        discriminator_learning_rate=9e-4,
+        generator_learning_rate=1e-3,
+        discriminator_learning_rate=1e-3,
         style_loss_coeff=1,
         reload=False,
         save_path='Celeba_crop_unif_cate_8e-3_1e-5.ckpt'
