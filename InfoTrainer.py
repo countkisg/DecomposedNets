@@ -52,6 +52,8 @@ class InfoGANTrainer(object):
         self.save_path = save_path
         self.trans_loss_coeff = trans_loss_coeff
         self.style_loss_coeff = style_loss_coeff
+        self.d_loss = None
+        self.g_loss = None
         ################
         self.subnets = 3 # At least larger than 1
 
@@ -73,6 +75,7 @@ class InfoGANTrainer(object):
                                                   self.style_loss_coeff * tf.log(1. - fake_style_d + TINY))
             generator_loss = - tf.reduce_mean(tf.log(fake_content_d + TINY) +
                                               self.style_loss_coeff * tf.log(fake_style_d) + TINY)
+
 
             self.log_vars.append(("discriminator_loss", discriminator_loss))
             self.log_vars.append(("generator_loss", generator_loss))
@@ -96,7 +99,7 @@ class InfoGANTrainer(object):
             # compute for discrete and continuous codes separately
             mi_est = tf.constant(0.)
             cross_ent = tf.constant(0.)
-            test_only_entropy = tf.constant(0.)
+            #test_only_entropy = tf.constant(0.)
             # discrete:
             # if len(self.model.reg_disc_latent_dist.dists) > 0:
             #     disc_reg_z = self.model.disc_reg_z(reg_z)
@@ -142,7 +145,7 @@ class InfoGANTrainer(object):
             self.d_vars = [var for var in all_vars if var.name.startswith('d_')]
             self.g_vars = [var for var in all_vars if var.name.startswith('g_')]
 
-            thetas = [var for var in all_vars if var.name.startswith('theta')]
+            #thetas = [var for var in all_vars if var.name.startswith('theta')]
 
             self.log_vars.append(("max_real_content_d", tf.reduce_max(real_content_d)))
             self.log_vars.append(("min_real_content_d", tf.reduce_min(real_content_d)))
@@ -161,6 +164,14 @@ class InfoGANTrainer(object):
 
             self.d_loss = discriminator_loss
             self.g_loss = generator_loss
+
+            # d_learning_rate = self.discriminator_learning_rate * pow(0.9, epoch * i / 500.)
+            discriminator_optimizer = tf.train.AdamOptimizer(self.discriminator_learning_rate, beta1=0.5)
+            self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+
+            g_learning_rate = self.generator_learning_rate * pow(0.9, 1 / 1000.)
+            generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
+            self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
     def visualize_all_factors(self):
         with tf.Session():
@@ -245,7 +256,7 @@ class InfoGANTrainer(object):
         self.init_opt()
 
         init = tf.initialize_all_variables()
-
+        initial_vars = set(tf.all_variables())
         with tf.Session() as sess:
             sess.run(init)
 
@@ -272,14 +283,15 @@ class InfoGANTrainer(object):
                     #log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
                     d_learning_rate = self.discriminator_learning_rate * pow(0.9,  epoch*i/500.)
                     discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-                    self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+                    discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
 
                     g_learning_rate = self.generator_learning_rate * pow(0.9, epoch*i/1000.)
                     generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-                    self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+                    generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
-                    sess.run(self.generator_trainer, feed_dict)
-                    log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
+                    sess.run(tf.initialize_variables(set(tf.all_variables()) - initial_vars))
+                    log_vals = sess.run([discriminator_trainer] + log_vars, feed_dict)[1:]
+                    sess.run(generator_trainer, feed_dict)
 
                     all_log_vals.append(log_vals)
                     counter += 1
@@ -287,7 +299,7 @@ class InfoGANTrainer(object):
                     g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
                     #print g_loss, d_loss
                     if g_loss > d_loss / 2:
-                        sess.run(self.generator_trainer, feed_dict)
+                        sess.run(generator_trainer, feed_dict)
 
                     if counter % self.snapshot_interval == 0:
                         snapshot_name = "%s_%s" % (self.exp_name, str(counter))
