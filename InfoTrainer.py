@@ -171,7 +171,7 @@ class InfoGANTrainer(object):
             self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
 
             g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
-                                                       100, 0.5, staircase=True)
+                                                       500, 0.8, staircase=True)
             generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
             self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
