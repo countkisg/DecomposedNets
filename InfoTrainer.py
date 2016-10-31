@@ -63,22 +63,23 @@ class InfoGANTrainer(object):
 
         with tf.Session() as sess:
             self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
-            fake_x, _ = self.model.generate(z_var, reuse=False)
-            real_content_d, real_style_d = self.model.discriminate(input_tensor, reuse=False)
-            fake_content_d, fake_style_d = self.model.discriminate(fake_x, reuse=True)
+
+            real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
+
+            fake_x, _ = self.model.generate(self.model.reg_latent_dist.sample(real_code_info), reuse=False)
+            fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
 
             reg_z = self.model.reg_z(z_var)
 
-            discriminator_loss = - tf.reduce_mean(tf.log(real_content_d + TINY) +
-                                                  self.style_loss_coeff * tf.log(real_style_d + TINY) +
-                                                  tf.log(1. - fake_content_d + TINY) +
-                                                  self.style_loss_coeff * tf.log(1. - fake_style_d + TINY))
-            generator_loss = - tf.reduce_mean(tf.log(fake_content_d + TINY) +
-                                              self.style_loss_coeff * tf.log(fake_style_d) + TINY)
+            discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
+                                                  tf.log(1. - fake_d + TINY))
+            generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY) )
 
+            vae_loss = self.vae_loss(input_tensor, fake_x, real_code_info)
 
             self.log_vars.append(("discriminator_loss", discriminator_loss))
             self.log_vars.append(("generator_loss", generator_loss))
+            self.log_vars.append(("vae_loss", vae_loss))
 
             # compute for transformer loss
             # trans_mean, trans_var = tf.nn.moments(region_feature, axes=[0])
@@ -147,22 +148,16 @@ class InfoGANTrainer(object):
 
             #thetas = [var for var in all_vars if var.name.startswith('theta')]
 
-            self.log_vars.append(("max_real_content_d", tf.reduce_max(real_content_d)))
-            self.log_vars.append(("min_real_content_d", tf.reduce_min(real_content_d)))
-            self.log_vars.append(("max_fake_content_d", tf.reduce_max(fake_content_d)))
-            self.log_vars.append(("min_fake_content_d", tf.reduce_min(fake_content_d)))
-            self.log_vars.append(("max_real_style_d", tf.reduce_max(real_style_d)))
-            self.log_vars.append(("min_real_style_d", tf.reduce_min(real_style_d)))
-            self.log_vars.append(("max_fake_style_d", tf.reduce_max(fake_style_d)))
-            self.log_vars.append(("min_fake_style_d", tf.reduce_min(fake_style_d)))
-
-            #trans_optimizer = tf.train.AdamOptimizer(self.generator_learning_rate, beta1=0.5)
-            #self.trans_trainer = trans_optimizer.minimize(trans_loss, var_list=thetas)
+            self.log_vars.append(("max_real_d", tf.reduce_max(real_d)))
+            self.log_vars.append(("min_real_d", tf.reduce_min(real_d)))
+            self.log_vars.append(("max_fake_d", tf.reduce_max(fake_d)))
+            self.log_vars.append(("min_fake_d", tf.reduce_min(fake_d)))
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
 
             self.d_loss = discriminator_loss
             self.g_loss = generator_loss
+            self.vae_loss = vae_loss
 
             self.global_step = tf.Variable(0, trainable=False)
             d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
@@ -175,6 +170,13 @@ class InfoGANTrainer(object):
             generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
             self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
+            self.vae_trainer = tf.train.RMSPropOptimizer(learning_rate=4e-4).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
+
+    def vae_loss(self, real_im, fake_im, code_info):
+        fake_im = tf.reshape(fake_im, [self.batch_size, -1])
+        recons_error = tf.reduce_mean(binary_crossentropy(fake_im, real_im))
+        kl_loss = - 0.5 * tf.reduce_mean(1. + 0. - tf.exp(code_info['id_0_mean'] - 1.))
+        return recons_error+kl_loss
 
     def visualize_all_factors(self):
         with tf.Session():
@@ -286,16 +288,16 @@ class InfoGANTrainer(object):
 
                     assign_op = self.global_step.assign(epoch*self.updates_per_epoch + i)
                     sess.run(assign_op)
-                    log_vals = sess.run([self.discriminator_trainer] + log_vars, feed_dict)[1:]
-                    sess.run(self.generator_trainer, feed_dict)
+                    log_vals = sess.run([self.vae_trainer] + log_vars, feed_dict)[1:]
+                    #sess.run(self.generator_trainer, feed_dict)
                     #print sess.run(self.z_var)
                     all_log_vals.append(log_vals)
                     counter += 1
 
-                    g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
+                    #g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
                     #print g_loss, d_loss
-                    if g_loss > d_loss / 2:
-                        sess.run(self.generator_trainer, feed_dict)
+                    #if g_loss > d_loss / 2:
+                    #    sess.run(self.generator_trainer, feed_dict)
 
                     if counter % self.snapshot_interval == 0:
                         snapshot_name = "%s_%s" % (self.exp_name, str(counter))

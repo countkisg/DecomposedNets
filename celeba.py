@@ -19,7 +19,7 @@ if __name__ == "__main__":
     root_checkpoint_dir = "ckt/CelebA"
     batch_size = 128
     updates_per_epoch = 100
-    max_epoch = 50
+    max_epoch = 300
 
     exp_name = "CelebA_%s" % timestamp
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         # (Categorical(10), True),
         # (Categorical(10), True),
         # (Categorical(10), True),
-        (Uniform(100), True),
+        (Uniform(30), True),
     ]
 
     model = InfoGAN(
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         discriminator_learning_rate=1e-4,
         style_loss_coeff=1,
         reload=False,
-        save_path='Celeba_crop_unif_cate_8e-3_1e-5.ckpt'
+        save_path='Celeba_vgg_d1e-4_g1e-4.ckpt'
     )
 
     algo.train()

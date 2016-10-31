@@ -169,13 +169,13 @@ class InfoGAN(object):
             with tf.variable_scope('d_net', reuse=reuse):
                 img = tf.reshape(x_var, shape=[-1]+list(self.image_shape))
                 vgg_fea, _ = vgg_net(self.vgg_model, img)
-                h0 = lrelu(conv2d(vgg_fea['relu3_1'], output_dim=128, k_w=3, k_h=3, name='d_face_conv0'))
+                h0 = vgg_fea['relu5_4']
                 h1 = linear(tf.reshape(h0, [self.batch_size, -1]), output_size=256, name='d_face_linear0')
-                content_discriminator = tf.nn.sigmoid(linear(h1, 1, name='d_face_content_linear0'))
+                d = tf.nn.sigmoid(linear(h1, 1, name='d_face_content_linear0'))
                 h2 = lrelu(conv2d(vgg_fea['relu5_1'], output_dim=128, k_h=3, k_w=3, name='d_face_conv1'))
-                h3 = linear(tf.reshape(h2, [self.batch_size, -1]), output_size=256, name='d_face_linear1')
-                style_discriminatror = tf.nn.sigmoid(linear(h3, 1, name='d_face_style_linear1'))
-                return content_discriminator, style_discriminatror
+                reg_code_flat = linear(tf.reshape(h2, [self.batch_size, -1]), output_size=self.reg_latent_dist.dist_flat_dim, name='d_code')
+                reg_code_info = self.reg_latent_dist.activate_dist(reg_code_flat)
+                return d, reg_code_info
 
         else:
             raise NotImplementedError
@@ -284,8 +284,8 @@ class InfoGAN(object):
                 x_dist_flat = tf.nn.tanh(
                     self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=4, k_h=4,
                                               name='ge_face_deconv4')))
-                x_dist_info = self.output_dist.activate_dist(x_dist_flat)
-                return x_dist_flat, x_dist_info
+
+                return x_dist_flat, None
         else:
             raise NotImplementedError
 
