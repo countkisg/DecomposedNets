@@ -174,8 +174,10 @@ class InfoGANTrainer(object):
 
     def vae_loss(self, real_im, fake_im, code_info):
         fake_im = tf.reshape(fake_im, [self.batch_size, -1])
+        real_im = (real_im+1.)/2.
+        fake_im = (fake_im+1.)/2.
         recons_error = tf.reduce_mean(binary_crossentropy(fake_im, real_im))
-        kl_loss = - 0.5 * tf.reduce_mean(1. + 0. - tf.exp(code_info['id_0_mean'] - 1.))
+        kl_loss = - 0.5 * tf.reduce_mean(1. + 0. - tf.square(code_info['id_0_mean'] - 1.))
         return recons_error+kl_loss
 
     def visualize_all_factors(self):
