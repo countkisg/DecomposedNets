@@ -6,7 +6,8 @@ from distribution import Bernoulli, Gaussian, Categorical
 from ops import binary_crossentropy
 import scipy.io
 import sys
-import math
+import scipy.misc
+from math import ceil
 TINY = 1e-8
 class InfoGANTrainer(object):
     def __init__(self,
@@ -341,4 +342,25 @@ class InfoGANTrainer(object):
                 output = sess.run(reg_dist_info, feed_dict={test_tensor: test_images[from_idx:to_idx, :]})
                 result.extend(np.argmax(output['id_0_prob'], axis=1))
             return result
+    def save_decoded_images(self, new_dir='decoded_'):
+        with tf.Session() as sess:
+            self.init_opt()
+            init = tf.initialize_all_variables()
+            sess.run(init)
+            saver = tf.train.Saver()
+            saver.restore(sess, self.save_path)
 
+            test_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
+            _, real_code_info = self.model.discriminate(test_tensor, reuse=True)
+            fake_images, _ = self.model.generate(self.model.reg_latent_dist.sample(real_code_info), reuse=True)
+            iterations = int(ceil(self.dataset.train.num_examples / float(self.batch_size)))
+            for i in range(iterations):
+                im, paths = self.dataset.train.next_sequencial_batch(self.batch_size)
+                decoded_im = sess.run(fake_images,
+                                      feed_dict={
+                                          test_tensor: im
+                                      })
+
+                decoded_im = (decoded_im+1.)/2.
+                for j in range(self.batch_size):
+                    scipy.misc.imsave(new_dir+paths[j], decoded_im[j])

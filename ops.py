@@ -111,3 +111,17 @@ def binary_crossentropy(output, target, from_logits=False):
         output = tf.clip_by_value(output, epsilon, 1 - epsilon)
         output = tf.log(output / (1 - output))
     return tf.nn.sigmoid_cross_entropy_with_logits(output, target)
+
+def UnPooling2x2ZeroFilled(x):
+    out = tf.concat(3, [x, tf.zeros_like(x)])
+    out = tf.concat(2, [out, tf.zeros_like(out)])
+
+    sh = x.get_shape().as_list()
+    if None not in sh[1:]:
+        out_size = [-1, sh[1] * 2, sh[2] * 2, sh[3]]
+        return tf.reshape(out, out_size)
+    else:
+        shv = tf.shape(x)
+        ret = tf.reshape(out, tf.pack([-1, shv[1] * 2, shv[2] * 2, sh[3]]))
+        ret.set_shape([None, None, None, sh[3]])
+        return ret

@@ -99,5 +99,12 @@ CelebA*
 mnist*
 100000.jpg
 cat.jpg
+*.jpg
+Untitled.ipynb
+decoded_img_align_celeba/
+demnist_2016_09_29.ckpt
+img_align_celeba.zip
+.idea/
+
 
 

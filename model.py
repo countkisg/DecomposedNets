@@ -163,7 +163,7 @@ class InfoGAN(object):
                 d = tf.nn.sigmoid(d_out[:, 0])
                 reg_dist_flat = tf.identity(encoder_template, name='reg_dist_flat')
                 reg_dist_info = self.reg_latent_dist.activate_dist(reg_dist_flat)
-                return d, self.reg_latent_dist.sample(reg_dist_info)
+                return d, reg_dist_info
                 #, reg_dist_info, reg_dist_flat
         elif self.network_type == 'celeba_vgg':
             with tf.variable_scope('d_net', reuse=reuse):

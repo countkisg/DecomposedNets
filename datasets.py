@@ -98,6 +98,7 @@ class BigDataset(Dataset):
         self._index_in_epoch = self._num_examples
         self._image_shape = image_shape
         self._image_dim = image_dim
+        self._sequencial_index_in_epoch = 0
 
     @property
     def labels(self):
@@ -115,7 +116,7 @@ class BigDataset(Dataset):
         if arr.max() > 1.0:
             arr = arr/128.0 - 1.
         return arr
-    def __read_images(self, start, end, batch_size):
+    def __read_images(self, start, batch_size):
         result = np.zeros(shape=[batch_size]+list(self._image_shape))
         for i in range(batch_size):
             path = self._filespath[start+i]
@@ -144,19 +145,30 @@ class BigDataset(Dataset):
             start = 0
             self._index_in_epoch = batch_size
             assert batch_size <= self._num_examples
-        end = self._index_in_epoch
+
         if self._labels is None:
-            return self.__read_images(start, end, batch_size), None
+            return self.__read_images(start, batch_size), None
         else:
             return NotImplementedError
-
+    def next_sequencial_batch(self, batch_size):
+        start = self._sequencial_index_in_epoch
+        self._sequencial_index_in_epoch += batch_size
+        if self._sequencial_index_in_epoch > self._num_examples:
+            small_batch = self._sequencial_index_in_epoch - self._num_examples + 1
+            return np.concatenate((self.__read_images(start, small_batch),
+                                   self.__read_images(0, batch_size-small_batch)),
+                                  axis=0), \
+                   self._filespath[start:start+small_batch]+self._filespath[0:batch_size-small_batch]
+        else:
+            return self.__read_images(start, batch_size), self._filespath[start:start+batch_size]
 class CelebA(object):
     def __init__(self):
         self.image_dim = 98*80*3
         self.image_shape = [98, 80, 3]
 
         self._data_directory = 'img_align_celeba/'
-        self._onlyfiles = [self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))]
+        self._onlyfiles = np.sort([self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))])
+
         self.train = BigDataset(filespath=self._onlyfiles, image_shape=self.image_shape, image_dim=self.image_dim)
 
 

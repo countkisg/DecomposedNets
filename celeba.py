@@ -45,7 +45,7 @@ if __name__ == "__main__":
         latent_spec=latent_spec,
         batch_size=batch_size,
         image_shape=dataset.image_shape,
-        network_type="celeba_vgg",
+        network_type="celeba",
         vgg_path='../imagenet-vgg-verydeep-19.mat'
     )
 
@@ -58,18 +58,19 @@ if __name__ == "__main__":
         checkpoint_dir=checkpoint_dir,
         max_epoch=max_epoch,
         updates_per_epoch=updates_per_epoch,
-        snapshot_interval=-1,
+        snapshot_interval=100,
         info_reg_coeff=1.0,
         generator_learning_rate=1e-4,
         discriminator_learning_rate=1e-4,
         style_loss_coeff=1,
         reload=False,
-        save_path='Celeba_vgg_d1e-4_g1e-4.ckpt'
+        save_path='Celeba_vae_300.ckpt'
     )
 
-    algo.train()
+    #algo.train()
 
     #algo.classify(test_images=None)
+    algo.save_decoded_images()
     #test_set = dataset.test.images[0:9984]
     #test_set_labels = dataset.test.labels[0:9984]
     #
