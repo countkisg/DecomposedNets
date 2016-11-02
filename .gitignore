@@ -107,7 +107,6 @@ img_align_celeba.zip
 .idea/
 start.sh
 _list_landmarks_align_celeba.txt
-delete_files.py
 list_landmarks_align_celeba.txt
 
 
