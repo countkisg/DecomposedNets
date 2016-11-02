@@ -88,7 +88,7 @@ class MnistDataset(object):
     def inverse_transform(self, data):
         return data
 class BigDataset(Dataset):
-    def __init__(self, filespath, labels=None, image_shape=None, image_dim=None):
+    def __init__(self, filespath, labels=None, image_shape=None, image_dim=None, offset=[28,-20,28,-30]):
         #self._images = images.reshape(images.shape[0], -1)
         self._labels = labels
         self._epochs_completed = -1
@@ -99,10 +99,15 @@ class BigDataset(Dataset):
         self._image_shape = image_shape
         self._image_dim = image_dim
         self._sequencial_index_in_epoch = 0
+        self._offset = offset
 
     @property
     def labels(self):
         return self._labels
+
+    @property
+    def off_set(self):
+        return self._offset
 
     @property
     def num_examples(self):
@@ -121,7 +126,8 @@ class BigDataset(Dataset):
         for i in range(batch_size):
             path = self._filespath[start+i]
             im = scipy.misc.imread(path)
-            croped_im = scipy.misc.imresize(im[28:-20, 28:-30,:], size=self._image_shape,interp='bicubic').astype(np.float32)
+            croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], :],
+                                            size=self._image_shape, interp='bicubic').astype(np.float32)
             #croped = im.astype(np.float32)[28:-20, 28:-30,:]
             result[i] = self.__normalize(croped_im)
             #result[i] = self.__normalize(scipy.misc.imresize(im, size=(48,56,3)).astype(np.float32))
@@ -153,22 +159,29 @@ class BigDataset(Dataset):
     def next_sequencial_batch(self, batch_size):
         start = self._sequencial_index_in_epoch
         self._sequencial_index_in_epoch += batch_size
-        if self._sequencial_index_in_epoch > self._num_examples:
-            small_batch = self._sequencial_index_in_epoch - self._num_examples + 1
-            return np.concatenate((self.__read_images(start, small_batch),
-                                   self.__read_images(0, batch_size-small_batch)),
-                                  axis=0), \
-                   self._filespath[start:start+small_batch]+self._filespath[0:batch_size-small_batch]
-        else:
-            return self.__read_images(start, batch_size), self._filespath[start:start+batch_size]
+        if self._sequencial_index_in_epoch >= self._num_examples-1:
+            self._sequencial_index_in_epoch=0
+        return self.__read_images(start, batch_size), self._filespath[start:start+batch_size]
 class CelebA(object):
     def __init__(self):
         self.image_dim = 98*80*3
         self.image_shape = [98, 80, 3]
-
+        self._offset = [28,-20,28,-30]
+        self._orignal_shape = [218, 178, 3]
         self._data_directory = 'img_align_celeba/'
         self._onlyfiles = np.sort([self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))])
 
-        self.train = BigDataset(filespath=self._onlyfiles, image_shape=self.image_shape, image_dim=self.image_dim)
+        self.train = BigDataset(filespath=self._onlyfiles, image_shape=self.image_shape, image_dim=self.image_dim,
+                                offset=self._offset)
+
+    def regenerate_landmarks(self, path='list_landmarks_align_celeba.txt'):
+        lm = np.genfromtxt(path, delimiter=',')
+        lm = lm[:, 1:-1] - self._offset[0]
+        new_x_radio = float(self.image_shape[1]) / (self._orignal_shape[1] - self._offset[0] + self._offset[1])
+        new_y_radio = float(self.image_shape[0]) / (self._orignal_shape[0] - self._offset[2] + self._offset[3])
+        lm[:, 0::2] = lm[:, 0::2] * new_x_radio
+        lm[:, 1::2] = lm[:, 1::2] * new_y_radio
+        return lm.astype(int)
+
 
 
