@@ -34,10 +34,10 @@ if __name__ == "__main__":
     latent_spec = [
         #(Uniform(1), False),
         # (Categorical(10), True),
+        # (Categorical(10), True),s
         # (Categorical(10), True),
         # (Categorical(10), True),
-        # (Categorical(10), True),
-        (Uniform(30), True),
+        (Uniform(30, fix_std=False), True),
     ]
 
     model = InfoGAN(

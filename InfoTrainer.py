@@ -76,11 +76,13 @@ class InfoGANTrainer(object):
                                                   tf.log(1. - fake_d + TINY))
             generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY) )
 
-            vae_loss = self.vae_loss(input_tensor, fake_x, real_code_info)
+            vae_loss_recons = self.vae_loss_recons(input_tensor, fake_x)
+            vae_loss_kl = self.vae_loss_kl(real_code_info)
 
-            self.log_vars.append(("discriminator_loss", discriminator_loss))
-            self.log_vars.append(("generator_loss", generator_loss))
-            self.log_vars.append(("vae_loss", vae_loss))
+            #self.log_vars.append(("discriminator_loss", discriminator_loss))
+            #self.log_vars.append(("generator_loss", generator_loss))
+            self.log_vars.append(("vae_loss_recons", vae_loss_recons))
+            self.log_vars.append(("vae_loss_kl", vae_loss_kl))
 
             # compute for transformer loss
             # trans_mean, trans_var = tf.nn.moments(region_feature, axes=[0])
@@ -158,7 +160,7 @@ class InfoGANTrainer(object):
 
             self.d_loss = discriminator_loss
             self.g_loss = generator_loss
-            self.vae_loss = vae_loss
+            self.vae_loss = vae_loss_recons + vae_loss_kl
 
             self.global_step = tf.Variable(0, trainable=False)
             d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
@@ -173,13 +175,18 @@ class InfoGANTrainer(object):
 
             self.vae_trainer = tf.train.RMSPropOptimizer(learning_rate=4e-4).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
 
-    def vae_loss(self, real_im, fake_im, code_info):
+    def vae_loss_recons(self, real_im, fake_im):
         fake_im = tf.reshape(fake_im, [self.batch_size, -1])
         real_im = (real_im+1.)/2.
         fake_im = (fake_im+1.)/2.
         recons_error = tf.reduce_mean(binary_crossentropy(fake_im, real_im))
-        kl_loss = - 0.5 * tf.reduce_mean(1. + 0. - tf.square(code_info['id_0_mean'] - 1.))
-        return recons_error+kl_loss
+        return recons_error
+
+    def vae_loss_kl(self, code_info):
+        kl_loss = - 0.5 * tf.reduce_mean(1. + tf.log(tf.square(code_info['id_0_stddev']))
+                                         - tf.square(code_info['id_0_mean']
+                                         - tf.square(code_info['id_0_stddev'])))
+        return kl_loss
 
     def visualize_all_factors(self):
         with tf.Session():
@@ -258,9 +265,7 @@ class InfoGANTrainer(object):
             imgs = tf.expand_dims(imgs, 0)
             tf.image_summary("image_%d_%s" % (dist_idx, dist.__class__.__name__), imgs)
 
-
     def train(self):
-
         self.init_opt()
 
         init = tf.initialize_all_variables()
