@@ -162,16 +162,16 @@ class InfoGANTrainer(object):
             self.g_loss = generator_loss
             self.vae_loss = vae_loss_recons + vae_loss_kl
 
-            self.global_step = tf.Variable(0, trainable=False)
-            d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
-                                                       500, 0.8, staircase=True)
-            discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-            self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
-
-            g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
-                                                       500, 0.8, staircase=True)
-            generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-            self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+            # self.global_step = tf.Variable(0, trainable=False)
+            # d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
+            #                                            500, 0.8, staircase=True)
+            # discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
+            # self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+            #
+            # g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
+            #                                            500, 0.8, staircase=True)
+            # generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
+            # self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
             self.vae_trainer = tf.train.RMSPropOptimizer(learning_rate=4e-4).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
 
@@ -184,8 +184,8 @@ class InfoGANTrainer(object):
 
     def vae_loss_kl(self, code_info):
         kl_loss = - 0.5 * tf.reduce_mean(1. + tf.log(tf.square(code_info['id_0_stddev']))
-                                         - tf.square(code_info['id_0_mean']
-                                         - tf.square(code_info['id_0_stddev'])))
+                                         - tf.square(code_info['id_0_mean'])
+                                         - tf.square(code_info['id_0_stddev']))
         return kl_loss
 
     def visualize_all_factors(self):

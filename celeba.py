@@ -58,7 +58,7 @@ if __name__ == "__main__":
         checkpoint_dir=checkpoint_dir,
         max_epoch=max_epoch,
         updates_per_epoch=updates_per_epoch,
-        snapshot_interval=100,
+        snapshot_interval=5000,
         info_reg_coeff=1.0,
         generator_learning_rate=1e-4,
         discriminator_learning_rate=1e-4,
@@ -67,10 +67,10 @@ if __name__ == "__main__":
         save_path='Celeba_vae_300.ckpt'
     )
 
-    #algo.train()
+    algo.train()
 
     #algo.classify(test_images=None)
-    algo.save_decoded_images()
+    #algo.save_decoded_images()
     #test_set = dataset.test.images[0:9984]
     #test_set_labels = dataset.test.labels[0:9984]
     #
