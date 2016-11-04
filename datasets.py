@@ -104,7 +104,9 @@ class BigDataset(Dataset):
     @property
     def labels(self):
         return self._labels
-
+    @property
+    def image_shape(self):
+        return self._image_shape
     @property
     def off_set(self):
         return self._offset
@@ -161,7 +163,11 @@ class BigDataset(Dataset):
         self._sequencial_index_in_epoch += batch_size
         if self._sequencial_index_in_epoch >= self._num_examples-1:
             self._sequencial_index_in_epoch=0
-        return self.__read_images(start, batch_size), self._filespath[start:start+batch_size]
+            return self.__read_images(0, batch_size), False
+        #return self.__read_images(start, batch_size), self._filespath[start:start+batch_size]
+        return self.__read_images(start, batch_size), True
+
+
 class CelebA(object):
     def __init__(self):
         self.image_dim = 98*80*3
