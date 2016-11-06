@@ -19,7 +19,7 @@ if __name__ == "__main__":
     root_checkpoint_dir = "ckt/CelebA"
     batch_size = 128
     updates_per_epoch = 100
-    max_epoch = 300
+    max_epoch = 100
 
     exp_name = "CelebA_%s" % timestamp
 

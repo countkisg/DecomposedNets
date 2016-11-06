@@ -9,7 +9,7 @@ def find_closest_idx(ll, value):
 
 color.colorconv.lab_ref_white = np.array([0.96422, 1.0, 0.82521])
 
-q_shape = (20, 30, 30)
+q_shape = (50, 30, 30)
 l_lin = np.linspace(0, 99, q_shape[0])
 a_lin = np.linspace(-128, 128, q_shape[1])
 b_lin = np.linspace(-128, 128, q_shape[2])
@@ -18,7 +18,7 @@ batch_size = 1
 
 celeba = CelebA().train
 q = np.zeros(shape=q_shape, dtype=np.float32)
-iterations = celeba.num_examples / batch_size
+iterations = celeba.num_examples
 
 widgets = ["Quantize #|", Percentage(), Bar(), ETA()]
 pbar = ProgressBar(maxval=celeba.num_examples, widgets=widgets)

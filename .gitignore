@@ -108,7 +108,7 @@ img_align_celeba.zip
 start.sh
 _list_landmarks_align_celeba.txt
 list_landmarks_align_celeba.txt
-
+*.npy
 
 
 

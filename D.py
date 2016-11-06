@@ -6,14 +6,18 @@ import scipy.misc
 from vgg import vgg_net
 
 path = '../imagenet-vgg-verydeep-19.mat'
-im = scipy.misc.imread('100000.jpg').astype(np.float32)
+im = scipy.misc.imread('110000.jpg').astype(np.float32)
 im = np.reshape(im, newshape=(-1,) + im.shape)
+im = im/128. - 1
 data = scipy.io.loadmat(path)
 net, _ = vgg_net(data, im)
 with tf.Session() as sess:
     fea = sess.run(net)
-    plt.imshow(fea['relu2_1'])
-    plt.imshow(fea['relu2_1'])
+    for i in range(64/3-1):
+        path = 'conv_img_1/%02d.jpg' % i
+        scipy.misc.imsave(path, fea['relu2_1'][0,:,:,(i*3):(i*3+3)])
+    # plt.imshow(fea['relu2_1'])
+    # plt.imshow(fea['relu2_1'])
 #     plt.imshow(fea['relu2_1'])
 #
 #

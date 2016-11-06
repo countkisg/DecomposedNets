@@ -288,6 +288,10 @@ class InfoGAN(object):
                 return x_dist_flat, None
         else:
             raise NotImplementedError
+    def vgg_generator(self, conv_z, reuse=None):
+        with tf.variable_scope('c_net', reuse=reuse):
+            return
+
 
     def disc_reg_z(self, reg_z_var):
         ret = []

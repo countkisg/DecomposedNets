@@ -4,7 +4,7 @@ from os import listdir
 from os.path import isfile, join
 import numpy as np
 import scipy.misc
-
+from skimage.color import rgb2gray
 class Dataset(object):
     def __init__(self, images, labels=None):
         self._images = images.reshape(images.shape[0], -1)
@@ -127,12 +127,12 @@ class BigDataset(Dataset):
         else:
             return arr/255.0
     def __read_images(self, start, batch_size, keep_value=False):
-        result = np.zeros(shape=[batch_size]+list(self._image_shape))
+        result = np.zeros(shape=[batch_size]+list(self._image_shape[0:2]))
         for i in range(batch_size):
             path = self._filespath[start+i]
-            im = scipy.misc.imread(path)
-            croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], :],
-                                            size=self._image_shape, interp='bicubic').astype(np.float32)
+            im = np.reshape(rgb2gray(scipy.misc.imread(path)), newshape=(218,178,1))
+            croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], 0],
+                                            size=self._image_shape[0:2], interp='bicubic').astype(np.float32)
             #croped = im.astype(np.float32)[28:-20, 28:-30,:]
             result[i] = self.__normalize(croped_im, keep_value)
             #result[i] = self.__normalize(scipy.misc.imresize(im, size=(48,56,3)).astype(np.float32))
@@ -173,8 +173,8 @@ class BigDataset(Dataset):
 
 class CelebA(object):
     def __init__(self):
-        self.image_dim = 98*80*3
-        self.image_shape = [98, 80, 3]
+        self.image_dim = 98*80*1
+        self.image_shape = [98, 80, 1]
         self._offset = [28,-20,28,-30]
         self._orignal_shape = [218, 178, 3]
         self._data_directory = 'img_align_celeba/'
