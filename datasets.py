@@ -119,11 +119,14 @@ class BigDataset(Dataset):
     def epochs_completed(self):
         return self._epochs_completed
 
-    def __normalize(self, arr):
-        if arr.max() > 1.0:
-            arr = arr/128.0 - 1.
-        return arr
-    def __read_images(self, start, batch_size):
+    def __normalize(self, arr, keep_value=False):
+        if False == keep_value:
+            if arr.max() > 1.0:
+                arr = arr/128.0 - 1.
+            return arr
+        else:
+            return arr/255.0
+    def __read_images(self, start, batch_size, keep_value=False):
         result = np.zeros(shape=[batch_size]+list(self._image_shape))
         for i in range(batch_size):
             path = self._filespath[start+i]
@@ -131,7 +134,7 @@ class BigDataset(Dataset):
             croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], :],
                                             size=self._image_shape, interp='bicubic').astype(np.float32)
             #croped = im.astype(np.float32)[28:-20, 28:-30,:]
-            result[i] = self.__normalize(croped_im)
+            result[i] = self.__normalize(croped_im, keep_value)
             #result[i] = self.__normalize(scipy.misc.imresize(im, size=(48,56,3)).astype(np.float32))
         return np.reshape(result, newshape=[batch_size, -1])
 
@@ -163,9 +166,9 @@ class BigDataset(Dataset):
         self._sequencial_index_in_epoch += batch_size
         if self._sequencial_index_in_epoch >= self._num_examples-1:
             self._sequencial_index_in_epoch=0
-            return self.__read_images(0, batch_size), False
+            return self.__read_images(0, batch_size, keep_value=True), False
         #return self.__read_images(start, batch_size), self._filespath[start:start+batch_size]
-        return self.__read_images(start, batch_size), True
+        return self.__read_images(start, batch_size, keep_value=True), True
 
 
 class CelebA(object):

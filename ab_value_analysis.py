@@ -3,14 +3,14 @@ import numpy as np
 import scipy.misc
 from datasets import CelebA, BigDataset
 from progressbar import ETA, Bar, Percentage, ProgressBar
-
+import matplotlib.pyplot as plt
 def find_closest_idx(ll, value):
     return np.abs(ll-value).argmin()
 
 color.colorconv.lab_ref_white = np.array([0.96422, 1.0, 0.82521])
 
 q_shape = (20, 30, 30)
-l_lin = np.linspace(0, 100, q_shape[0])
+l_lin = np.linspace(0, 99, q_shape[0])
 a_lin = np.linspace(-128, 128, q_shape[1])
 b_lin = np.linspace(-128, 128, q_shape[2])
 
@@ -33,7 +33,8 @@ for i_i in range(iterations):
             id_b = find_closest_idx(b_lin, lab[i, j, 2])
             q[id_l, id_a, id_b] += 1
     pbar.update(i_i)
+    if i_i == 100: break
     if False == flag: break
 
-
+np.save('quan', q)
 
