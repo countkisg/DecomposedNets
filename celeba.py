@@ -64,7 +64,7 @@ if __name__ == "__main__":
         discriminator_learning_rate=1e-4,
         style_loss_coeff=1,
         reload=False,
-        save_path='Celeba_vae_300.ckpt'
+        save_path='Celeba_gray.ckpt'
     )
 
     algo.train()

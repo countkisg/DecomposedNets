@@ -173,7 +173,7 @@ class InfoGANTrainer(object):
             # generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
             # self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
-            self.vae_trainer = tf.train.RMSPropOptimizer(learning_rate=4e-4).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
+            self.vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
 
     def init_vgg_opt(self):
         self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
@@ -236,16 +236,19 @@ class InfoGANTrainer(object):
             # self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
 
     def vae_loss_recons(self, real_im, fake_im):
+        epsilon = 1e-8
         fake_im = tf.reshape(fake_im, [self.batch_size, -1])
         real_im = (real_im+1.)/2.
         fake_im = (fake_im+1.)/2.
-        recons_error = tf.reduce_mean(binary_crossentropy(fake_im, real_im))
+        #recons_error = tf.reduce_mean(binary_crossentropy(fake_im, real_im))
+        recons_error = tf.reduce_sum(-real_im * tf.log(fake_im + epsilon) -
+                      (1.0 - real_im) * tf.log(1.0 - fake_im + epsilon))
         return recons_error
 
     def vae_loss_kl(self, code_info):
-        kl_loss = - 0.5 * tf.reduce_mean(1. + tf.log(tf.square(code_info['id_0_stddev']))
-                                         - tf.square(code_info['id_0_mean'])
-                                         - tf.square(code_info['id_0_stddev']))
+        kl_loss = tf.reduce_sum( -1. - 2. * tf.log(code_info['id_0_stddev'])
+                                         + tf.square(code_info['id_0_mean'])
+                                         + tf.square(code_info['id_0_stddev']))
         return kl_loss
 
     def visualize_all_factors(self):
