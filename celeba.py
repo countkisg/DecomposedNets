@@ -29,7 +29,7 @@ if __name__ == "__main__":
     mkdir_p(log_dir)
     mkdir_p(checkpoint_dir)
 
-    dataset = CelebA()
+    dataset = CelebA(small_size=5000)
 
     latent_spec = [
         #(Uniform(1), False),

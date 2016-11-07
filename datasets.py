@@ -172,13 +172,15 @@ class BigDataset(Dataset):
 
 
 class CelebA(object):
-    def __init__(self):
+    def __init__(self, small_size=None):
         self.image_dim = 98*80*1
         self.image_shape = [98, 80, 1]
         self._offset = [28,-20,28,-30]
         self._orignal_shape = [218, 178, 3]
         self._data_directory = 'img_align_celeba/'
         self._onlyfiles = np.sort([self._data_directory+f for f in listdir(self._data_directory) if isfile(join(self._data_directory, f))])
+        if small_size:
+            self._onlyfiles = self._onlyfiles[0:small_size]
 
         self.train = BigDataset(filespath=self._onlyfiles, image_shape=self.image_shape, image_dim=self.image_dim,
                                 offset=self._offset)
