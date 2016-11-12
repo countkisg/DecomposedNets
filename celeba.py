@@ -13,11 +13,11 @@ import datetime
 if __name__ == "__main__":
 
     now = datetime.datetime.now(dateutil.tz.tzlocal())
-    timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
+    timestamp = now.strftime('%d_%H_%M_%S')
 
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
-    batch_size = 128
+    batch_size = 1
     updates_per_epoch = 100
     max_epoch = 100
 
@@ -64,22 +64,12 @@ if __name__ == "__main__":
         discriminator_learning_rate=1e-4,
         style_loss_coeff=1,
         reload=False,
+        method_type='vae',
         save_path='Celeba_vae_900_eu.ckpt'
     )
 
     algo.train()
-
-    #algo.classify(test_images=None)
-    #algo.save_decoded_images()
-    #test_set = dataset.test.images[0:9984]
-    #test_set_labels = dataset.test.labels[0:9984]
-    #
-    # result = algo.classify(test_set)
-    # for label in range(10):
-    #     ids = np.where(test_set_labels == label)
-    #     mnist_hist(np.array(result)[ids[0]], title=label )
-    #manifold_ene, real_data_ene = algo.evaluate_energy(images=test_set, epoches=1)
-
+    #algo.eval_generated_images(best_num=10, iterations=50)
     tmp = 123
 
 

@@ -8,6 +8,10 @@ import scipy.io
 import sys
 import scipy.misc
 from math import ceil
+from utils import mkdir_p
+import dateutil.tz
+import datetime
+import os
 TINY = 1e-8
 class InfoGANTrainer(object):
     def __init__(self,
@@ -26,7 +30,8 @@ class InfoGANTrainer(object):
                  reload=False,
                  save_path=None,
                  trans_loss_coeff=0.2,
-                 style_loss_coeff=1
+                 style_loss_coeff=1,
+                 method_type=None
                  ):
         """
         :type model: RegularizedGAN
@@ -43,169 +48,59 @@ class InfoGANTrainer(object):
         self.generator_learning_rate = generator_learning_rate
         self.discriminator_learning_rate = discriminator_learning_rate
         self.info_reg_coeff = info_reg_coeff
-        self.discriminator_trainer = None
-        self.generator_trainer = None
-        self.trans_trainer = None
+        self.trainer_dict = dict()
+
         self.input_tensor = None
         self.test_tensor = None # Only used after trained
         self.log_vars = []
         self.reload = reload
         self.save_path = save_path
-        self.trans_loss_coeff = trans_loss_coeff
-        self.style_loss_coeff = style_loss_coeff
         self.d_loss = None
         self.g_loss = None
-        ################
-        self.subnets = 3 # At least larger than 1
+        self.method_type = None
 
-
-    def init_opt(self):
-        self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
-
+    def init_vae_opt(self):
         with tf.Session() as sess:
-            self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
+            self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
 
             real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
-
             fake_x, _ = self.model.generate(self.model.reg_latent_dist.sample(real_code_info), reuse=False)
-            fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
-
-            reg_z = self.model.reg_z(z_var)
-
-            discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
-                                                  tf.log(1. - fake_d + TINY))
-            generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY) )
 
             vae_loss_recons = self.vae_loss_recons(input_tensor, fake_x)
             vae_loss_kl = self.vae_loss_kl(real_code_info)
 
-            #self.log_vars.append(("discriminator_loss", discriminator_loss))
-            #self.log_vars.append(("generator_loss", generator_loss))
             self.log_vars.append(("vae_loss_recons", vae_loss_recons))
             self.log_vars.append(("vae_loss_kl", vae_loss_kl))
-
-            # compute for transformer loss
-            # trans_mean, trans_var = tf.nn.moments(region_feature, axes=[0])
-            # inside_loss = tf.reduce_mean(trans_var)
-            # trans_mean = tf.reshape(trans_mean, [self.subnets, -1])
-            # outside_loss = tf.constant(0.)
-            # for i in range(self.subnets+1):
-            #     outside_loss = outside_loss + \
-            #                    binary_crossentropy(trans_mean[:, i%self.subnets], trans_mean[:, (i+1)%self.subnets])
-            # outside_loss = - tf.log(tf.reduce_mean(outside_loss))
-            # trans_loss = inside_loss + outside_loss*self.trans_loss_coeff
-            # discriminator_loss += trans_loss
-
-            # self.log_vars.append(("transformer_loss", trans_loss))
-            # self.log_vars.append(("inside_loss", inside_loss))
-            # self.log_vars.append(("outside_loss", outside_loss))
-
-            # compute for discrete and continuous codes separately
-            mi_est = tf.constant(0.)
-            cross_ent = tf.constant(0.)
-            #test_only_entropy = tf.constant(0.)
-            # discrete:
-            # if len(self.model.reg_disc_latent_dist.dists) > 0:
-            #     disc_reg_z = self.model.disc_reg_z(reg_z)
-            #     disc_reg_dist_info = self.model.disc_reg_dist_info(fake_reg_z_dist_info)
-            #     disc_log_q_c_given_x = self.model.reg_disc_latent_dist.logli(disc_reg_z, disc_reg_dist_info)
-            #     disc_log_q_c = self.model.reg_disc_latent_dist.logli_prior(disc_reg_z)
-            #     disc_cross_ent = tf.reduce_mean(-disc_log_q_c_given_x)
-            #     disc_ent = tf.reduce_mean(-disc_log_q_c)
-            #     disc_mi_est = disc_ent - disc_cross_ent
-            #     mi_est += disc_mi_est
-            #     cross_ent += disc_cross_ent
-            #     self.log_vars.append(("MI_disc", disc_mi_est))
-            #     self.log_vars.append(("CrossEnt_disc", disc_cross_ent))
-            #     discriminator_loss -= self.info_reg_coeff * disc_mi_est
-            #     generator_loss -= self.info_reg_coeff * disc_mi_est
-            #     test_only_entropy -= self.info_reg_coeff * disc_mi_est
-            #
-            # if len(self.model.reg_cont_latent_dist.dists) > 0:
-            #     cont_reg_z = self.model.cont_reg_z(reg_z)
-            #     cont_reg_dist_info = self.model.cont_reg_dist_info(fake_reg_z_dist_info)
-            #     cont_log_q_c_given_x = self.model.reg_cont_latent_dist.logli(cont_reg_z, cont_reg_dist_info)
-            #     cont_log_q_c = self.model.reg_cont_latent_dist.logli_prior(cont_reg_z)
-            #     cont_cross_ent = tf.reduce_mean(-cont_log_q_c_given_x)
-            #     cont_ent = tf.reduce_mean(-cont_log_q_c)
-            #     cont_mi_est = cont_ent - cont_cross_ent
-            #     mi_est += cont_mi_est
-            #     cross_ent += cont_cross_ent
-            #     self.log_vars.append(("MI_cont", cont_mi_est))
-            #     self.log_vars.append(("CrossEnt_cont", cont_cross_ent))
-            #     discriminator_loss -= self.info_reg_coeff * cont_mi_est
-            #     generator_loss -= self.info_reg_coeff * cont_mi_est
-            #     test_only_entropy -= self.info_reg_coeff * cont_mi_est
-
-            # for idx, dist_info in enumerate(self.model.reg_latent_dist.split_dist_info(fake_reg_z_dist_info)):
-            #     if "stddev" in dist_info:
-            #         self.log_vars.append(("max_std_%d" % idx, tf.reduce_max(dist_info["stddev"])))
-            #         self.log_vars.append(("min_std_%d" % idx, tf.reduce_min(dist_info["stddev"])))
-
-            self.log_vars.append(("MI", mi_est))
-            self.log_vars.append(("CrossEnt", cross_ent))
 
             all_vars = tf.trainable_variables()
             self.d_vars = [var for var in all_vars if var.name.startswith('d_')]
             self.g_vars = [var for var in all_vars if var.name.startswith('g_')]
 
-            #thetas = [var for var in all_vars if var.name.startswith('theta')]
-
             self.log_vars.append(("max_real_d", tf.reduce_max(real_d)))
             self.log_vars.append(("min_real_d", tf.reduce_min(real_d)))
-            self.log_vars.append(("max_fake_d", tf.reduce_max(fake_d)))
-            self.log_vars.append(("min_fake_d", tf.reduce_min(fake_d)))
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
 
-            self.d_loss = discriminator_loss
-            self.g_loss = generator_loss
             self.vae_loss = vae_loss_recons + vae_loss_kl
 
-            self.global_step = tf.Variable(0, trainable=False)
-            # d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
-            #                                            500, 0.8, staircase=True)
-            # discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-            # self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
-            #
-            # g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
-            #                                            500, 0.8, staircase=True)
-            # generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-            # self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+            vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
+            self.trainer_dict['vae_trainer'] = vae_trainer
 
-            self.vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
-
-    def init_vgg_opt(self):
-        self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
-
+    def init_gan_opt(self):
         with tf.Session() as sess:
+            self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
             self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
 
             real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
-
-            fake_x, _ = self.model.generate(self.model.reg_latent_dist.sample(real_code_info), reuse=False)
+            fake_x, _ = self.model.generate(self.z_var, reuse=False)
             fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
-
-            reg_z = self.model.reg_z(z_var)
 
             discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
                                                   tf.log(1. - fake_d + TINY))
             generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY))
 
-            vae_loss_recons = self.vae_loss_recons(input_tensor, fake_x)
-            vae_loss_kl = self.vae_loss_kl(real_code_info)
-
-            # self.log_vars.append(("discriminator_loss", discriminator_loss))
-            # self.log_vars.append(("generator_loss", generator_loss))
-            self.log_vars.append(("vae_loss_recons", vae_loss_recons))
-            self.log_vars.append(("vae_loss_kl", vae_loss_kl))
-
-            # compute for discrete and continuous codes separately
-            mi_est = tf.constant(0.)
-            cross_ent = tf.constant(0.)
-
-            self.log_vars.append(("MI", mi_est))
-            self.log_vars.append(("CrossEnt", cross_ent))
+            self.log_vars.append(("discriminator_loss", discriminator_loss))
+            self.log_vars.append(("generator_loss", generator_loss))
 
             all_vars = tf.trainable_variables()
             self.d_vars = [var for var in all_vars if var.name.startswith('d_')]
@@ -220,20 +115,18 @@ class InfoGANTrainer(object):
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
 
-            self.d_loss = discriminator_loss
-            self.g_loss = generator_loss
-            self.vae_loss = vae_loss_recons + vae_loss_kl
-
             self.global_step = tf.Variable(0, trainable=False)
-            # d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
-            #                                            500, 0.8, staircase=True)
-            # discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-            # self.discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
-            #
-            # g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
-            #                                            500, 0.8, staircase=True)
-            # generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-            # self.generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+            d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
+                                                       500, 0.8, staircase=True)
+            discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
+            discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+
+            g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
+                                                       500, 0.8, staircase=True)
+            generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
+            generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+            self.trainer_dict['d_trainer'] = discriminator_trainer
+            self.trainer_dict['g_trainer'] = generator_trainer
 
     def vae_loss_recons(self, real_im, fake_im):
         epsilon = 1e-8
@@ -241,9 +134,9 @@ class InfoGANTrainer(object):
         real_im = (real_im+1.)/2.
         fake_im = (fake_im+1.)/2.
         #recons_error = tf.reduce_sum(binary_crossentropy(fake_im, real_im))
-        recons_error = tf.reduce_sum((tf.square(real_im-fake_im)))
-        #recons_error = tf.reduce_sum(-real_im * tf.log(fake_im + epsilon) -
-        #             (1.0 - real_im) * tf.log(1.0 - fake_im + epsilon))
+        # recons_error = tf.reduce_sum((tf.square(real_im-fake_im)))
+        recons_error = tf.reduce_sum(-real_im * tf.log(fake_im + epsilon) -
+                    (1.0 - real_im) * tf.log(1.0 - fake_im + epsilon))
         return recons_error
 
     def vae_loss_kl(self, code_info):
@@ -330,10 +223,16 @@ class InfoGANTrainer(object):
             tf.image_summary("image_%d_%s" % (dist_idx, dist.__class__.__name__), imgs)
 
     def train(self):
-        self.init_opt()
+        if 'vae' == self.method_type.lower():
+            self.init_vae_opt()
+        elif 'gan' == self.method_type.lower():
+            self.init_gan_opt()
+        elif 'vgan' == self.method_type.lower():
+            return
+        else:
+            raise NotImplementedError
 
         init = tf.initialize_all_variables()
-        initial_vars = set(tf.all_variables())
         with tf.Session() as sess:
             sess.run(init)
 
@@ -353,23 +252,18 @@ class InfoGANTrainer(object):
                 pbar.start()
 
                 all_log_vals = []
+                log_vals = []
                 for i in range(self.updates_per_epoch):
                     pbar.update(i)
                     x, _ = self.dataset.train.next_batch(self.batch_size)
                     feed_dict = {self.input_tensor: x}
 
-                    assign_op = self.global_step.assign(epoch*self.updates_per_epoch + i)
-                    sess.run(assign_op)
-                    log_vals = sess.run([self.vae_trainer] + log_vars, feed_dict)[1:]
-                    #sess.run(self.generator_trainer, feed_dict)
-                    #print sess.run(self.z_var)
+                    # run different optimization objectives
+                    for k, v in self.trainer_dict.iteritems():
+                        log_vals = sess.run(v + log_vars, feed_dict)[1:]
+                    # End optimization
                     all_log_vals.append(log_vals)
                     counter += 1
-
-                    #g_loss, d_loss = sess.run([self.g_loss, self.d_loss], feed_dict)
-                    #print g_loss, d_loss
-                    #if g_loss > d_loss / 2:
-                    #    sess.run(self.generator_trainer, feed_dict)
 
                     if counter % self.snapshot_interval == 0:
                         snapshot_name = "%s_%s" % (self.exp_name, str(counter))
@@ -391,9 +285,26 @@ class InfoGANTrainer(object):
                     raise ValueError("NaN detected!")
         return
 
-    def classify(self, test_images):
+    def eval_generated_images(self, best_num=10, iterations=10, ):
+        now = datetime.datetime.now(dateutil.tz.tzlocal())
+        timestamp = now.strftime('%m_%d_%H_%M')
+
+        root_log_dir = "selected_result/"
+
+        exp_name = "%s_%s_%s" % (self.method_type, self.model.nework_type, timestamp)
+
+        log_dir = os.path.join(root_log_dir, exp_name)
+        mkdir_p(log_dir)
+
         with tf.Session() as sess:
-            self.init_opt()
+            if 'vae' == self.method_type.lower():
+                self.init_vae_opt()
+            elif 'gan' == self.method_type.lower():
+                self.init_gan_opt()
+            elif 'vgan' == self.method_type.lower():
+                return
+            else:
+                raise NotImplementedError
 
             init = tf.initialize_all_variables()
             sess.run(init)
@@ -401,19 +312,50 @@ class InfoGANTrainer(object):
             saver = tf.train.Saver()
             saver.restore(sess, self.save_path)
 
-            self.test_tensor = test_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
-            d, sample, reg_dist_info, reg_dist_flat = self.model.discriminate(test_tensor, reuse=True)
-            length, _ = test_images.shape
-            result = []
-            for iteration in range(length/self.batch_size):
-                from_idx = iteration*self.batch_size
-                to_idx = from_idx+self.batch_size
-                output = sess.run(reg_dist_info, feed_dict={test_tensor: test_images[from_idx:to_idx, :]})
-                result.extend(np.argmax(output['id_0_prob'], axis=1))
-            return result
+            best_loss = np.empty(shape=(0) ,dtype=np.float32)
+            best_result = np.zeros(shape=[best_num]+self.dataset.image_shape)
+            for i in range(iterations):
+                x, _ = self.dataset.train.next_batch(self.batch_size)
+                feed_dict = {self.input_tensor: x}
+                generated_img = None
+                loss = None
+                if 'vae' == self.method_type.lower():
+                    real_d, real_code_info = self.model.discriminate(self.input_tensor, reuse=True)
+                    fake_x, _ = self.model.generate(self.model.reg_latent_dist.sample(real_code_info), reuse=True)
+
+                    vae_loss_recons = self.vae_loss_recons(self.input_tensor, fake_x)
+                    vae_loss_kl = self.vae_loss_kl(real_code_info)
+                    generated_img, loss = sess.run([fake_x, vae_loss_kl+vae_loss_recons], feed_dict=feed_dict)
+                elif 'gan' == self.method_type.lower():
+                    z_var = tf.placeholder(tf.float32, [self.batch_size, self.model.latent_dist.dim])
+                    fake_x, _ = self.model.generate(z_var, reuse=True)
+                    fake_d, _ = self.model.discriminate(fake_x, reuse=True)
+                    feed_dict = {z_var:np.random.uniform(-1., 1., size=(self.batch_size, self.model.latent_dist.dim))}
+                    generated_img, loss = sess.run([fake_x, fake_d], feed_dict=feed_dict)
+                elif 'vgan' == self.method_type.lower():
+                    return
+                else:
+                    raise NotImplementedError
+                best_loss = np.concatenate((loss, best_loss))
+                index = np.argmin(best_loss)
+                best_loss = best_loss[index[0:best_num]]
+                best_result = np.concatenate((generated_img, best_result))[index[0:best_num]]
+            # save images
+            for i in range(best_num):
+                path = os.path.join(log_dir, '%03d.jpg' % i)
+                scipy.misc.imsave(path, best_result[i])
+
     def save_decoded_images(self, new_dir='decoded_'):
         with tf.Session() as sess:
-            self.init_opt()
+            if 'vae' == self.method_type.lower():
+                self.init_vae_opt()
+            elif 'gan' == self.method_type.lower():
+                self.init_gan_opt()
+            elif 'vgan' == self.method_type.lower():
+                return
+            else:
+                raise NotImplementedError
+
             init = tf.initialize_all_variables()
             sess.run(init)
             saver = tf.train.Saver()
