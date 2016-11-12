@@ -27,10 +27,7 @@ class InfoGANTrainer(object):
                  info_reg_coeff=1.0,
                  discriminator_learning_rate=2e-4,
                  generator_learning_rate=2e-4,
-                 reload=False,
                  save_path=None,
-                 trans_loss_coeff=0.2,
-                 style_loss_coeff=1,
                  method_type=None
                  ):
         """
@@ -57,7 +54,7 @@ class InfoGANTrainer(object):
         self.save_path = save_path
         self.d_loss = None
         self.g_loss = None
-        self.method_type = None
+        self.method_type = method_type
 
     def init_vae_opt(self):
         with tf.Session() as sess:
@@ -81,9 +78,9 @@ class InfoGANTrainer(object):
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
 
-            self.vae_loss = vae_loss_recons + vae_loss_kl
+            vae_loss = vae_loss_recons + vae_loss_kl
 
-            vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(self.vae_loss, var_list=self.d_vars+self.g_vars)
+            vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(vae_loss, var_list=self.d_vars+self.g_vars)
             self.trainer_dict['vae_trainer'] = vae_trainer
 
     def init_gan_opt(self):
@@ -134,9 +131,9 @@ class InfoGANTrainer(object):
         real_im = (real_im+1.)/2.
         fake_im = (fake_im+1.)/2.
         #recons_error = tf.reduce_sum(binary_crossentropy(fake_im, real_im))
-        # recons_error = tf.reduce_sum((tf.square(real_im-fake_im)))
-        recons_error = tf.reduce_sum(-real_im * tf.log(fake_im + epsilon) -
-                    (1.0 - real_im) * tf.log(1.0 - fake_im + epsilon))
+        recons_error = tf.reduce_sum((tf.square(real_im-fake_im)))
+        # recons_error = tf.reduce_sum(-real_im * tf.log(fake_im + epsilon) -
+        #             (1.0 - real_im) * tf.log(1.0 - fake_im + epsilon))
         return recons_error
 
     def vae_loss_kl(self, code_info):
@@ -260,7 +257,7 @@ class InfoGANTrainer(object):
 
                     # run different optimization objectives
                     for k, v in self.trainer_dict.iteritems():
-                        log_vals = sess.run(v + log_vars, feed_dict)[1:]
+                        log_vals = sess.run([v] + log_vars, feed_dict)[1:]
                     # End optimization
                     all_log_vals.append(log_vals)
                     counter += 1

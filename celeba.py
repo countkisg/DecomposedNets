@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
-    batch_size = 1
+    batch_size = 128
     updates_per_epoch = 100
     max_epoch = 100
 
@@ -62,8 +62,6 @@ if __name__ == "__main__":
         info_reg_coeff=1.0,
         generator_learning_rate=1e-4,
         discriminator_learning_rate=1e-4,
-        style_loss_coeff=1,
-        reload=False,
         method_type='vae',
         save_path='Celeba_vae_900_eu.ckpt'
     )
