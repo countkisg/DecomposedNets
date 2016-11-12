@@ -132,7 +132,7 @@ class BigDataset(Dataset):
             path = self._filespath[start+i]
             im = scipy.misc.imread(path)
             croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], :],
-                                            size=self._image_shape[0:2], interp='bicubic').astype(np.float32)
+                                            size=self._image_shape, interp='bicubic').astype(np.float32)
             #croped = im.astype(np.float32)[28:-20, 28:-30,:]
             result[i] = self.__normalize(croped_im, keep_value)
             #result[i] = self.__normalize(scipy.misc.imresize(im, size=(48,56,3)).astype(np.float32))

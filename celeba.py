@@ -63,11 +63,11 @@ if __name__ == "__main__":
         generator_learning_rate=1e-4,
         discriminator_learning_rate=1e-4,
         method_type='vae',
-        save_path='Celeba_vae_900_eu.ckpt'
+        save_path='Celeba_vae_small_kernel.ckpt'
     )
 
-    algo.train()
-    #algo.eval_generated_images(best_num=10, iterations=50)
+    #algo.train()
+    algo.eval_generated_images(best_num=10, iterations=50)
     tmp = 123
 
 

@@ -78,7 +78,7 @@ class InfoGANTrainer(object):
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
 
-            vae_loss = vae_loss_recons + vae_loss_kl
+            vae_loss = tf.reduce_sum(vae_loss_recons) + vae_loss_kl
 
             vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(vae_loss, var_list=self.d_vars+self.g_vars)
             self.trainer_dict['vae_trainer'] = vae_trainer
@@ -131,7 +131,7 @@ class InfoGANTrainer(object):
         real_im = (real_im+1.)/2.
         fake_im = (fake_im+1.)/2.
         #recons_error = tf.reduce_sum(binary_crossentropy(fake_im, real_im))
-        recons_error = tf.reduce_sum((tf.square(real_im-fake_im)))
+        recons_error = tf.reduce_sum((tf.square(real_im-fake_im)), reduction_indices=-1)
         # recons_error = tf.reduce_sum(-real_im * tf.log(fake_im + epsilon) -
         #             (1.0 - real_im) * tf.log(1.0 - fake_im + epsilon))
         return recons_error
@@ -288,7 +288,7 @@ class InfoGANTrainer(object):
 
         root_log_dir = "selected_result/"
 
-        exp_name = "%s_%s_%s" % (self.method_type, self.model.nework_type, timestamp)
+        exp_name = "%s_%s_%s" % (self.method_type, self.model.network_type, timestamp)
 
         log_dir = os.path.join(root_log_dir, exp_name)
         mkdir_p(log_dir)
@@ -334,7 +334,7 @@ class InfoGANTrainer(object):
                 else:
                     raise NotImplementedError
                 best_loss = np.concatenate((loss, best_loss))
-                index = np.argmin(best_loss)
+                index = np.argsort(best_loss)
                 best_loss = best_loss[index[0:best_num]]
                 best_result = np.concatenate((generated_img, best_result))[index[0:best_num]]
             # save images
