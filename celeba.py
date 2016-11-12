@@ -29,7 +29,7 @@ if __name__ == "__main__":
     mkdir_p(log_dir)
     mkdir_p(checkpoint_dir)
 
-    dataset = CelebA(small_size=5000)
+    dataset = CelebA()
 
     latent_spec = [
         #(Uniform(1), False),
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         # (Categorical(10), True),s
         # (Categorical(10), True),
         # (Categorical(10), True),
-        (Uniform(30, fix_std=False), True),
+        (Uniform(100, fix_std=False), True),
     ]
 
     model = InfoGAN(
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         discriminator_learning_rate=1e-4,
         style_loss_coeff=1,
         reload=False,
-        save_path='Celeba_gray.ckpt'
+        save_path='Celeba_vae_900_eu.ckpt'
     )
 
     algo.train()

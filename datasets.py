@@ -127,11 +127,11 @@ class BigDataset(Dataset):
         else:
             return arr/255.0
     def __read_images(self, start, batch_size, keep_value=False):
-        result = np.zeros(shape=[batch_size]+list(self._image_shape[0:2]))
+        result = np.zeros(shape=[batch_size]+list(self._image_shape))
         for i in range(batch_size):
             path = self._filespath[start+i]
-            im = np.reshape(rgb2gray(scipy.misc.imread(path)), newshape=(218,178,1))
-            croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], 0],
+            im = scipy.misc.imread(path)
+            croped_im = scipy.misc.imresize(im[self._offset[0]:self._offset[1], self._offset[2]:self._offset[3], :],
                                             size=self._image_shape[0:2], interp='bicubic').astype(np.float32)
             #croped = im.astype(np.float32)[28:-20, 28:-30,:]
             result[i] = self.__normalize(croped_im, keep_value)
@@ -173,8 +173,8 @@ class BigDataset(Dataset):
 
 class CelebA(object):
     def __init__(self, small_size=None):
-        self.image_dim = 98*80*1
-        self.image_shape = [98, 80, 1]
+        self.image_dim = 98*80*3
+        self.image_shape = [98, 80, 3]
         self._offset = [28,-20,28,-30]
         self._orignal_shape = [218, 178, 3]
         self._data_directory = 'img_align_celeba/'
