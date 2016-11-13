@@ -140,8 +140,7 @@ class InfoGANTrainer(object):
                                                   tf.log(1. - fake_d + TINY))
             generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY))
 
-            real_to_fake_d, _ = self.model.discriminate(input_tensor[0:20], reuse=True)
-            noise_loss = -tf.reduce_mean(tf.log(1 - real_to_fake_d + TINY))
+            noise_loss = -tf.reduce_mean(tf.log(1 - real_d + TINY)) * 0.1
             discriminator_loss += noise_loss
 
             self.log_vars.append(("discriminator_loss", discriminator_loss))
