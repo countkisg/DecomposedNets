@@ -61,12 +61,12 @@ if __name__ == "__main__":
         generator_learning_rate=1e-4,
         discriminator_learning_rate=1e-4,
         vae_learning_rate=1e-3,
-        decay_value=1e-5,
-        method_type='gan'
+        decay_value=1e-6,
+        method_type='vae'
     )
 
     algo.train()
-    #algo.eval_generated_images(save_path='Celeba_vae_small_kernel.ckpt', best_num=10, iterations=50)
+    #algo.eval_generated_images(save_path='Celeba_vae_small_kernel.ckpt', best_num=50, iterations=100)
     tmp = 123
 
 

@@ -28,7 +28,6 @@ class InfoGANTrainer(object):
                  discriminator_learning_rate=2e-4,
                  generator_learning_rate=2e-4,
                  vae_learning_rate=1e-4,
-                 save_path=None,
                  method_type=None,
                  decay_value=1e-5
                  ):
@@ -51,7 +50,6 @@ class InfoGANTrainer(object):
         self.trainer_dict = dict()
         self.decay_value = decay_value
         self.input_tensor = None
-        self.test_tensor = None # Only used after trained
         self.log_vars = []
         self.reload = reload
         self.d_loss = None
@@ -82,8 +80,8 @@ class InfoGANTrainer(object):
 
             vae_loss = tf.reduce_sum(vae_loss_recons) + vae_loss_kl
 
-            self.global_step = tf.Variable(0, trainable=False)
-            vae_learning_rate = self.vae_learning_rate - self.global_step * self.decay_value
+            #self.global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
+            vae_learning_rate = self.vae_learning_rate # - self.global_step * self.decay_value
             vae_trainer = tf.train.RMSPropOptimizer(learning_rate=vae_learning_rate).minimize(vae_loss, var_list=self.d_vars+self.g_vars)
             self.trainer_dict['vae_trainer'] = vae_trainer
 
@@ -119,13 +117,9 @@ class InfoGANTrainer(object):
             self.global_step = tf.Variable(0,dtype=tf.float32, trainable=False)
             d_learning_rate = self.discriminator_learning_rate - self.global_step * self.decay_value
             g_learning_rate = self.generator_learning_rate - self.global_step * self.decay_value
-            # d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
-            #                                            500, 0.8, staircase=True)
             discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
             discriminator_trainer = discriminator_optimizer.minimize(discriminator_loss, var_list=self.d_vars)
 
-            # g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
-            #                                            500, 0.8, staircase=True)
             generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
             generator_trainer = generator_optimizer.minimize(generator_loss, var_list=self.g_vars)
             self.log_vars.append(("G learning rate", g_learning_rate))
@@ -133,6 +127,51 @@ class InfoGANTrainer(object):
             self.trainer_dict['d_trainer'] = discriminator_trainer
             self.trainer_dict['g_trainer'] = generator_trainer
 
+    def init_vgan_opt(self):
+        with tf.Session() as sess:
+            self.input_tensor = input_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
+            self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
+
+            real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
+            fake_x, _ = self.model.generate(self.z_var, reuse=False)
+            fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
+
+            discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
+                                                  tf.log(1. - fake_d + TINY))
+            generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY))
+
+            real_to_fake_d, _ = self.model.discriminate(input_tensor[0:20], reuse=True)
+            noise_loss = -tf.reduce_mean(tf.log(1 - real_to_fake_d + TINY))
+            discriminator_loss += noise_loss
+
+            self.log_vars.append(("discriminator_loss", discriminator_loss))
+            self.log_vars.append(("generator_loss", generator_loss))
+
+            all_vars = tf.trainable_variables()
+            self.d_vars = [var for var in all_vars if var.name.startswith('d_')]
+            self.g_vars = [var for var in all_vars if var.name.startswith('g_')]
+
+            # thetas = [var for var in all_vars if var.name.startswith('theta')]
+
+            self.log_vars.append(("max_real_d", tf.reduce_max(real_d)))
+            self.log_vars.append(("min_real_d", tf.reduce_min(real_d)))
+            self.log_vars.append(("max_fake_d", tf.reduce_max(fake_d)))
+            self.log_vars.append(("min_fake_d", tf.reduce_min(fake_d)))
+            for k, v in self.log_vars:
+                tf.scalar_summary(k, v)
+
+            self.global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
+            d_learning_rate = self.discriminator_learning_rate - self.global_step * self.decay_value
+            g_learning_rate = self.generator_learning_rate - self.global_step * self.decay_value
+            discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
+            discriminator_trainer = discriminator_optimizer.minimize(discriminator_loss, var_list=self.d_vars)
+
+            generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
+            generator_trainer = generator_optimizer.minimize(generator_loss, var_list=self.g_vars)
+            self.log_vars.append(("G learning rate", g_learning_rate))
+            self.log_vars.append(("D learning rate", d_learning_rate))
+            self.trainer_dict['d_trainer'] = discriminator_trainer
+            self.trainer_dict['g_trainer'] = generator_trainer
     def vae_loss_recons(self, real_im, fake_im):
         epsilon = 1e-8
         fake_im = tf.reshape(fake_im, [self.batch_size, -1])
@@ -233,7 +272,7 @@ class InfoGANTrainer(object):
         elif 'gan' == self.method_type.lower():
             self.init_gan_opt()
         elif 'vgan' == self.method_type.lower():
-            return
+            self.init_vgan_opt()
         else:
             raise NotImplementedError
 
@@ -359,7 +398,7 @@ class InfoGANTrainer(object):
                 path = os.path.join(log_dir, '%03d.jpg' % i)
                 scipy.misc.imsave(path, best_result[i])
 
-    def save_decoded_images(self, new_dir='decoded_'):
+    def save_decoded_images(self, save_path, new_dir='decoded_'):
         with tf.Session() as sess:
             if 'vae' == self.method_type.lower():
                 self.init_vae_opt()
@@ -373,7 +412,7 @@ class InfoGANTrainer(object):
             init = tf.initialize_all_variables()
             sess.run(init)
             saver = tf.train.Saver()
-            saver.restore(sess, self.save_path)
+            saver.restore(sess, save_path)
 
             test_tensor = tf.placeholder(tf.float32, [self.batch_size, self.dataset.image_dim])
             _, real_code_info = self.model.discriminate(test_tensor, reuse=True)
