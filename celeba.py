@@ -18,8 +18,8 @@ if __name__ == "__main__":
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
     batch_size = 128
-    updates_per_epoch = 100
-    max_epoch = 100
+    updates_per_epoch = 200
+    max_epoch = 50
 
     exp_name = "CelebA_%s" % timestamp
 
@@ -33,8 +33,6 @@ if __name__ == "__main__":
 
     latent_spec = [
         #(Uniform(1), False),
-        # (Categorical(10), True),
-        # (Categorical(10), True),s
         # (Categorical(10), True),
         # (Categorical(10), True),
         (Uniform(100, fix_std=False), True),
@@ -62,12 +60,13 @@ if __name__ == "__main__":
         info_reg_coeff=1.0,
         generator_learning_rate=1e-4,
         discriminator_learning_rate=1e-4,
-        method_type='vae',
-        save_path='Celeba_vae_small_kernel.ckpt'
+        vae_learning_rate=1e-3,
+        decay_value=1e-5,
+        method_type='gan'
     )
 
-    #algo.train()
-    algo.eval_generated_images(best_num=10, iterations=50)
+    algo.train()
+    #algo.eval_generated_images(save_path='Celeba_vae_small_kernel.ckpt', best_num=10, iterations=50)
     tmp = 123
 
 

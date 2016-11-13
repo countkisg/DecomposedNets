@@ -27,8 +27,10 @@ class InfoGANTrainer(object):
                  info_reg_coeff=1.0,
                  discriminator_learning_rate=2e-4,
                  generator_learning_rate=2e-4,
+                 vae_learning_rate=1e-4,
                  save_path=None,
-                 method_type=None
+                 method_type=None,
+                 decay_value=1e-5
                  ):
         """
         :type model: RegularizedGAN
@@ -44,14 +46,14 @@ class InfoGANTrainer(object):
         self.updates_per_epoch = updates_per_epoch
         self.generator_learning_rate = generator_learning_rate
         self.discriminator_learning_rate = discriminator_learning_rate
+        self.vae_learning_rate = vae_learning_rate
         self.info_reg_coeff = info_reg_coeff
         self.trainer_dict = dict()
-
+        self.decay_value = decay_value
         self.input_tensor = None
         self.test_tensor = None # Only used after trained
         self.log_vars = []
         self.reload = reload
-        self.save_path = save_path
         self.d_loss = None
         self.g_loss = None
         self.method_type = method_type
@@ -80,7 +82,9 @@ class InfoGANTrainer(object):
 
             vae_loss = tf.reduce_sum(vae_loss_recons) + vae_loss_kl
 
-            vae_trainer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(vae_loss, var_list=self.d_vars+self.g_vars)
+            self.global_step = tf.Variable(0, trainable=False)
+            vae_learning_rate = self.vae_learning_rate - self.global_step * self.decay_value
+            vae_trainer = tf.train.RMSPropOptimizer(learning_rate=vae_learning_rate).minimize(vae_loss, var_list=self.d_vars+self.g_vars)
             self.trainer_dict['vae_trainer'] = vae_trainer
 
     def init_gan_opt(self):
@@ -112,16 +116,20 @@ class InfoGANTrainer(object):
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
 
-            self.global_step = tf.Variable(0, trainable=False)
-            d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
-                                                       500, 0.8, staircase=True)
+            self.global_step = tf.Variable(0,dtype=tf.float32, trainable=False)
+            d_learning_rate = self.discriminator_learning_rate - self.global_step * self.decay_value
+            g_learning_rate = self.generator_learning_rate - self.global_step * self.decay_value
+            # d_learning_rate = tf.train.exponential_decay(self.discriminator_learning_rate, self.global_step,
+            #                                            500, 0.8, staircase=True)
             discriminator_optimizer = tf.train.AdamOptimizer(d_learning_rate, beta1=0.5)
-            discriminator_trainer = discriminator_optimizer.minimize(self.d_loss, var_list=self.d_vars)
+            discriminator_trainer = discriminator_optimizer.minimize(discriminator_loss, var_list=self.d_vars)
 
-            g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
-                                                       500, 0.8, staircase=True)
+            # g_learning_rate = tf.train.exponential_decay(self.generator_learning_rate, self.global_step,
+            #                                            500, 0.8, staircase=True)
             generator_optimizer = tf.train.AdamOptimizer(g_learning_rate, beta1=0.5)
-            generator_trainer = generator_optimizer.minimize(self.g_loss, var_list=self.g_vars)
+            generator_trainer = generator_optimizer.minimize(generator_loss, var_list=self.g_vars)
+            self.log_vars.append(("G learning rate", g_learning_rate))
+            self.log_vars.append(("D learning rate", d_learning_rate))
             self.trainer_dict['d_trainer'] = discriminator_trainer
             self.trainer_dict['g_trainer'] = generator_trainer
 
@@ -250,15 +258,24 @@ class InfoGANTrainer(object):
 
                 all_log_vals = []
                 log_vals = []
+
+                ########Assign global step to decay learning rate ######
+                assign_op = self.global_step.assign(epoch)
+                sess.run(assign_op)
+                ########################################################
+
                 for i in range(self.updates_per_epoch):
                     pbar.update(i)
                     x, _ = self.dataset.train.next_batch(self.batch_size)
                     feed_dict = {self.input_tensor: x}
 
-                    # run different optimization objectives
+                    #############################################
+                    #### Run different optimization objectives###
                     for k, v in self.trainer_dict.iteritems():
                         log_vals = sess.run([v] + log_vars, feed_dict)[1:]
-                    # End optimization
+                    ############# End optimization ##############
+                    #############################################
+
                     all_log_vals.append(log_vals)
                     counter += 1
 
@@ -282,7 +299,7 @@ class InfoGANTrainer(object):
                     raise ValueError("NaN detected!")
         return
 
-    def eval_generated_images(self, best_num=10, iterations=10, ):
+    def eval_generated_images(self, save_path=None, best_num=10, iterations=10, ):
         now = datetime.datetime.now(dateutil.tz.tzlocal())
         timestamp = now.strftime('%m_%d_%H_%M')
 
@@ -307,9 +324,9 @@ class InfoGANTrainer(object):
             sess.run(init)
 
             saver = tf.train.Saver()
-            saver.restore(sess, self.save_path)
+            saver.restore(sess, save_path)
 
-            best_loss = np.empty(shape=(0) ,dtype=np.float32)
+            best_loss = np.empty(shape=(0), dtype=np.float32)
             best_result = np.zeros(shape=[best_num]+self.dataset.image_shape)
             for i in range(iterations):
                 x, _ = self.dataset.train.next_batch(self.batch_size)
