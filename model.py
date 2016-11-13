@@ -44,6 +44,8 @@ class InfoGAN(object):
         self.ge_face_bn2 = BatchNorm(self.batch_size, name='ge_face_bn2')
         self.ge_face_bn3 = BatchNorm(self.batch_size, name='ge_face_bn3')
         self.ge_face_bn4 = BatchNorm(self.batch_size, name='ge_face_bn4')
+        self.ge_face_bn5 = BatchNorm(self.batch_size, name='ge_face_bn5')
+        self.ge_face_bn6 = BatchNorm(self.batch_size, name='ge_face_bn6')
 
         # load pre-trained vgg-19 model
         self.vgg_model = scipy.io.loadmat(vgg_path)
@@ -125,9 +127,41 @@ class InfoGAN(object):
                 return x_dist_flat, x_dist_info
         else:
             raise NotImplementedError
-    def vgg_generator(self, conv_z, reuse=None):
-        with tf.variable_scope('c_net', reuse=reuse):
-            return
+
+    def test_generator(self, z_var, reuse=None):
+        with tf.variable_scope('g_net', reuse=reuse):
+            noise_code = tf.reshape(z_var, [self.batch_size, self.latent_dist.dim])
+            h0 = lrelu(
+                linear(noise_code, int(ceil(self.image_shape[0] / 32.)) * int(ceil(self.image_shape[1] / 32.)) * 128,
+                       name='ge_face_linear0'))
+            h1 = lrelu(
+                linear(h0, int(ceil(self.image_shape[0] / 32.)) * int(ceil(self.image_shape[1] / 32.)) * 256,
+                       name='ge_face_linear1'))
+            h2 = lrelu(self.ge_face_bn0(deconv2d(tf.reshape(h1, shape=[self.batch_size,
+                                                                       int(ceil(self.image_shape[0] / 32.)),
+                                                                       int(ceil(self.image_shape[1] / 32.)),
+                                                                       256]),
+                                                 output_shape=[self.batch_size,
+                                                               int(ceil(self.image_shape[0] / 16.)),
+                                                               int(ceil(self.image_shape[1] / 16.)), 128], k_h=4, k_w=4,
+                                                 name='ge_face_deconv0')))
+            h3 = lrelu(self.ge_face_bn1(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 8.)),
+                                                                   int(ceil(self.image_shape[1] / 8.)), 64], k_h=3,
+                                                 k_w=3,
+                                                 name='ge_face_deconv1')))
+            h4 = lrelu(self.ge_face_bn2(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 4.)),
+                                                                   int(ceil(self.image_shape[1] / 4.)), 32], k_h=3,
+                                                 k_w=3,
+                                                 name='ge_face_deconv2')))
+            # h5 = lrelu(self.ge_face_bn3(deconv2d(h4, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
+            #                                                        int(ceil(self.image_shape[1] / 2.)), 16], k_h=2,
+            #                                      k_w=2,
+            #                                      name='ge_face_deconv3')))
+            x_dist_flat = tf.nn.tanh(
+                self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=2, k_h=2,
+                                          name='ge_face_deconv4')))
+            x_dist_info = self.output_dist.activate_dist(x_dist_flat)
+            return x_dist_flat, x_dist_info
 
 
     def disc_reg_z(self, reg_z_var):

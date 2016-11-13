@@ -91,7 +91,7 @@ class InfoGANTrainer(object):
             self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
 
             real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
-            fake_x, _ = self.model.generate(self.z_var, reuse=False)
+            fake_x, _ = self.model.test_generate(self.z_var, reuse=False)
             fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
 
             discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
