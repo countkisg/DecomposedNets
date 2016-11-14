@@ -13,12 +13,12 @@ import datetime
 if __name__ == "__main__":
 
     now = datetime.datetime.now(dateutil.tz.tzlocal())
-    timestamp = now.strftime('%d_%H_%M_%S')
+    timestamp = now.strftime('%m_%d_%H_%M_%S')
 
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
     batch_size = 128
-    updates_per_epoch = 200
+    updates_per_epoch = 100
     max_epoch = 50
 
     exp_name = "CelebA_%s" % timestamp
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     )
 
     algo.train()
-    #algo.eval_generated_images(save_path='Celeba_vae_small_kernel.ckpt', best_num=50, iterations=100)
+    #algo.eval_generated_images(save_path='Celeba_gan_10000.ckpt', best_num=50, iterations=100)
     tmp = 123
 
 

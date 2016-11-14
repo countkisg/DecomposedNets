@@ -55,6 +55,7 @@ class InfoGANTrainer(object):
         self.d_loss = None
         self.g_loss = None
         self.method_type = method_type
+        self.img_summary_num = 5
 
     def init_vae_opt(self):
         with tf.Session() as sess:
@@ -77,10 +78,11 @@ class InfoGANTrainer(object):
             self.log_vars.append(("min_real_d", tf.reduce_min(real_d)))
             for k, v in self.log_vars:
                 tf.scalar_summary(k, v)
+            tf.image_summary(tag='images', tensor=(fake_x[0:self.img_summary_num,:,:,:]+1.)/2., max_images=self.img_summary_num)
 
             vae_loss = tf.reduce_sum(vae_loss_recons) + vae_loss_kl
 
-            #self.global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
+            self.global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
             vae_learning_rate = self.vae_learning_rate # - self.global_step * self.decay_value
             vae_trainer = tf.train.RMSPropOptimizer(learning_rate=vae_learning_rate).minimize(vae_loss, var_list=self.d_vars+self.g_vars)
             self.trainer_dict['vae_trainer'] = vae_trainer
@@ -91,7 +93,7 @@ class InfoGANTrainer(object):
             self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
 
             real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
-            fake_x, _ = self.model.test_generate(self.z_var, reuse=False)
+            fake_x, _ = self.model.generate(self.z_var, reuse=False)
             fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
 
             discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
@@ -141,7 +143,7 @@ class InfoGANTrainer(object):
             generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY))
 
             self.model.batch_size = 20
-            real_to_fake_d, _ = self.model.discriminate(input_tensor[0:20], reuse=True)
+            real_to_fake_d, _ = self.model.discriminate(input_tensor[0:20, :], reuse=True)
             noise_loss = -tf.reduce_mean(tf.log(1 - real_to_fake_d + TINY))
             discriminator_loss += noise_loss
             self.model.batch_size = self.batch_size
@@ -357,7 +359,7 @@ class InfoGANTrainer(object):
             elif 'gan' == self.method_type.lower():
                 self.init_gan_opt()
             elif 'vgan' == self.method_type.lower():
-                return
+                self.init_vgan_opt()
             else:
                 raise NotImplementedError
 
@@ -388,7 +390,11 @@ class InfoGANTrainer(object):
                     feed_dict = {z_var:np.random.uniform(-1., 1., size=(self.batch_size, self.model.latent_dist.dim))}
                     generated_img, loss = sess.run([fake_x, fake_d], feed_dict=feed_dict)
                 elif 'vgan' == self.method_type.lower():
-                    return
+                    z_var = tf.placeholder(tf.float32, [self.batch_size, self.model.latent_dist.dim])
+                    fake_x, _ = self.model.generate(z_var, reuse=True)
+                    fake_d, _ = self.model.discriminate(fake_x, reuse=True)
+                    feed_dict = {z_var: np.random.uniform(-1., 1., size=(self.batch_size, self.model.latent_dist.dim))}
+                    generated_img, loss = sess.run([fake_x, fake_d], feed_dict=feed_dict)
                 else:
                     raise NotImplementedError
                 best_loss = np.concatenate((loss, best_loss))

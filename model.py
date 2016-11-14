@@ -128,7 +128,7 @@ class InfoGAN(object):
         else:
             raise NotImplementedError
 
-    def test_generator(self, z_var, reuse=None):
+    def test_generate(self, z_var, reuse=None):
         with tf.variable_scope('g_net', reuse=reuse):
             noise_code = tf.reshape(z_var, [self.batch_size, self.latent_dist.dim])
             h0 = lrelu(
@@ -153,12 +153,12 @@ class InfoGAN(object):
                                                                    int(ceil(self.image_shape[1] / 4.)), 32], k_h=3,
                                                  k_w=3,
                                                  name='ge_face_deconv2')))
-            # h5 = lrelu(self.ge_face_bn3(deconv2d(h4, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
-            #                                                        int(ceil(self.image_shape[1] / 2.)), 16], k_h=2,
-            #                                      k_w=2,
-            #                                      name='ge_face_deconv3')))
+            h5 = lrelu(self.ge_face_bn3(deconv2d(h4, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
+                                                                   int(ceil(self.image_shape[1] / 2.)), 16], k_h=2,
+                                                 k_w=2,
+                                                 name='ge_face_deconv3')))
             x_dist_flat = tf.nn.tanh(
-                self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=2, k_h=2,
+                self.ge_face_bn4(deconv2d(h5, output_shape=[self.batch_size] + self.image_shape, k_w=2, k_h=2,
                                           name='ge_face_deconv4')))
             x_dist_info = self.output_dist.activate_dist(x_dist_flat)
             return x_dist_flat, x_dist_info
