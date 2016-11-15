@@ -59,7 +59,7 @@ if __name__ == "__main__":
         snapshot_interval=5000,
         info_reg_coeff=1.0,
         generator_learning_rate=1e-2,
-        discriminator_learning_rate=1e-3,
+        discriminator_learning_rate=1e-4,
         vae_learning_rate=1e-3,
         decay_value=1e-5,
         method_type='vgan'
