@@ -66,6 +66,7 @@ class InfoGANTrainer(object):
 
             vae_loss_recons = self.vae_loss_recons(input_tensor, fake_x)
             vae_loss_kl = self.vae_loss_kl(real_code_info)
+            vae_loss_recons = tf.reduce_sum(vae_loss_recons)
 
             self.log_vars.append(("vae_loss_recons", vae_loss_recons))
             self.log_vars.append(("vae_loss_kl", vae_loss_kl))
@@ -80,7 +81,7 @@ class InfoGANTrainer(object):
                 tf.scalar_summary(k, v)
             tf.image_summary(tag='images', tensor=(fake_x[0:self.img_summary_num,:,:,:]+1.)/2., max_images=self.img_summary_num)
 
-            vae_loss = tf.reduce_sum(vae_loss_recons) + vae_loss_kl
+            vae_loss = vae_loss_recons + vae_loss_kl
 
             self.global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
             vae_learning_rate = self.vae_learning_rate # - self.global_step * self.decay_value
@@ -135,18 +136,18 @@ class InfoGANTrainer(object):
             self.z_var = z_var = self.model.latent_dist.sample_prior(self.batch_size)
 
             real_d, real_code_info = self.model.discriminate(input_tensor, reuse=False)
-            fake_x, _ = self.model.generate(self.z_var, reuse=False)
+            fake_x, _ = self.model.test_generate(self.z_var, reuse=False)
             fake_d, fake_code_info = self.model.discriminate(fake_x, reuse=True)
 
             discriminator_loss = - tf.reduce_mean(tf.log(real_d + TINY) +
                                                   tf.log(1. - fake_d + TINY))
             generator_loss = - tf.reduce_mean(tf.log(fake_d + TINY))
 
-            self.model.batch_size = 20
-            real_to_fake_d, _ = self.model.discriminate(input_tensor[0:20, :], reuse=True)
-            noise_loss = -tf.reduce_mean(tf.log(1 - real_to_fake_d + TINY))
-            discriminator_loss += noise_loss
-            self.model.batch_size = self.batch_size
+            # self.model.batch_size = 20
+            # real_to_fake_d, _ = self.model.discriminate(input_tensor[0:20, :], reuse=True)
+            # noise_loss = -tf.reduce_mean(tf.log(1 - real_to_fake_d + TINY))
+            # discriminator_loss += noise_loss
+            # self.model.batch_size = self.batch_size
 
             self.log_vars.append(("discriminator_loss", discriminator_loss))
             self.log_vars.append(("generator_loss", generator_loss))
@@ -404,7 +405,7 @@ class InfoGANTrainer(object):
             # save images
             for i in range(best_num):
                 path = os.path.join(log_dir, '%03d.jpg' % i)
-                scipy.misc.imsave(path, best_result[i])
+                scipy.misc.imsave(path, (best_result[i]+1.)/2.)
 
     def save_decoded_images(self, save_path, new_dir='decoded_'):
         with tf.Session() as sess:

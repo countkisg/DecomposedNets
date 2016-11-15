@@ -132,33 +132,27 @@ class InfoGAN(object):
         with tf.variable_scope('g_net', reuse=reuse):
             noise_code = tf.reshape(z_var, [self.batch_size, self.latent_dist.dim])
             h0 = lrelu(
-                linear(noise_code, int(ceil(self.image_shape[0] / 32.)) * int(ceil(self.image_shape[1] / 32.)) * 128,
+                linear(noise_code, int(ceil(self.image_shape[0] / 16.)) * int(ceil(self.image_shape[1] / 16.)) * 1024,
                        name='ge_face_linear0'))
-            h1 = lrelu(
-                linear(h0, int(ceil(self.image_shape[0] / 32.)) * int(ceil(self.image_shape[1] / 32.)) * 256,
-                       name='ge_face_linear1'))
-            h2 = lrelu(self.ge_face_bn0(deconv2d(tf.reshape(h1, shape=[self.batch_size,
-                                                                       int(ceil(self.image_shape[0] / 32.)),
-                                                                       int(ceil(self.image_shape[1] / 32.)),
-                                                                       256]),
-                                                 output_shape=[self.batch_size,
-                                                               int(ceil(self.image_shape[0] / 16.)),
-                                                               int(ceil(self.image_shape[1] / 16.)), 128], k_h=4, k_w=4,
-                                                 name='ge_face_deconv0')))
-            h3 = lrelu(self.ge_face_bn1(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 8.)),
-                                                                   int(ceil(self.image_shape[1] / 8.)), 64], k_h=3,
-                                                 k_w=3,
+
+            h1 = tf.reshape(h0, shape=[self.batch_size,
+                                       int(ceil(self.image_shape[0] / 16.)),
+                                       int(ceil(self.image_shape[1] / 16.)),
+                                       1024])
+            h2 = lrelu(self.ge_face_bn1(deconv2d(h1, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 8.)),
+                                                                   int(ceil(self.image_shape[1] / 8.)), 512], k_h=8,
+                                                 k_w=8,
                                                  name='ge_face_deconv1')))
-            h4 = lrelu(self.ge_face_bn2(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 4.)),
-                                                                   int(ceil(self.image_shape[1] / 4.)), 32], k_h=3,
-                                                 k_w=3,
+            h3 = lrelu(self.ge_face_bn2(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 4.)),
+                                                                   int(ceil(self.image_shape[1] / 4.)), 256], k_h=5,
+                                                 k_w=5,
                                                  name='ge_face_deconv2')))
-            h5 = lrelu(self.ge_face_bn3(deconv2d(h4, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
-                                                                   int(ceil(self.image_shape[1] / 2.)), 16], k_h=2,
-                                                 k_w=2,
+            h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
+                                                                   int(ceil(self.image_shape[1] / 2.)), 128], k_h=5,
+                                                 k_w=5,
                                                  name='ge_face_deconv3')))
             x_dist_flat = tf.nn.tanh(
-                self.ge_face_bn4(deconv2d(h5, output_shape=[self.batch_size] + self.image_shape, k_w=2, k_h=2,
+                self.ge_face_bn4(deconv2d(h4, output_shape=[self.batch_size] + self.image_shape, k_w=5, k_h=5,
                                           name='ge_face_deconv4')))
             x_dist_info = self.output_dist.activate_dist(x_dist_flat)
             return x_dist_flat, x_dist_info
