@@ -341,7 +341,7 @@ class InfoGANTrainer(object):
                 sys.stdout.flush()
                 if np.any(np.isnan(avg_log_vals)):
                     raise ValueError("NaN detected!")
-        return
+
 
     def eval_generated_images(self, save_path=None, best_num=10, iterations=10, ):
         now = datetime.datetime.now(dateutil.tz.tzlocal())
@@ -392,7 +392,7 @@ class InfoGANTrainer(object):
                     generated_img, loss = sess.run([fake_x, fake_d], feed_dict=feed_dict)
                 elif 'vgan' == self.method_type.lower():
                     z_var = tf.placeholder(tf.float32, [self.batch_size, self.model.latent_dist.dim])
-                    fake_x, _ = self.model.generate(z_var, reuse=True)
+                    fake_x, _ = self.model.test_generate(z_var, reuse=True)
                     fake_d, _ = self.model.discriminate(fake_x, reuse=True)
                     feed_dict = {z_var: np.random.uniform(-1., 1., size=(self.batch_size, self.model.latent_dist.dim))}
                     generated_img, loss = sess.run([fake_x, fake_d], feed_dict=feed_dict)

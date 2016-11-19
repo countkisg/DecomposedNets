@@ -18,7 +18,7 @@ if __name__ == "__main__":
     root_log_dir = "logs/CelebA"
     root_checkpoint_dir = "ckt/CelebA"
     batch_size = 128
-    updates_per_epoch = 1
+    updates_per_epoch = 50
     max_epoch = 30
 
     exp_name = "CelebA_%s" % timestamp
@@ -65,8 +65,8 @@ if __name__ == "__main__":
         method_type='vgan'
     )
 
-    algo.train()
-    #algo.eval_generated_images(save_path='Celeba_gan_5000.ckpt', best_num=50, iterations=100)
+    #algo.train()
+    algo.eval_generated_images(save_path='Celeba_gan_newnets_3000.ckpt', best_num=50, iterations=100)
     tmp = 123
 
 

@@ -139,15 +139,15 @@ class InfoGAN(object):
                                        int(ceil(self.image_shape[0] / 16.)),
                                        int(ceil(self.image_shape[1] / 16.)),
                                        1024])
-            h2 = lrelu(self.ge_face_bn1(deconv2d(h1, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 8.)),
+            h2 = self.ge_face_bn1(lrelu(deconv2d(h1, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 8.)),
                                                                    int(ceil(self.image_shape[1] / 8.)), 512], k_h=8,
                                                  k_w=8,
                                                  name='ge_face_deconv1')))
-            h3 = lrelu(self.ge_face_bn2(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 4.)),
+            h3 = self.ge_face_bn2(lrelu(deconv2d(h2, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 4.)),
                                                                    int(ceil(self.image_shape[1] / 4.)), 256], k_h=5,
                                                  k_w=5,
                                                  name='ge_face_deconv2')))
-            h4 = lrelu(self.ge_face_bn3(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
+            h4 = self.ge_face_bn3(lrelu(deconv2d(h3, output_shape=[self.batch_size, int(ceil(self.image_shape[0] / 2.)),
                                                                    int(ceil(self.image_shape[1] / 2.)), 128], k_h=5,
                                                  k_w=5,
                                                  name='ge_face_deconv3')))
